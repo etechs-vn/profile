@@ -1,0 +1,25 @@
+meta {
+  name: Get User By ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/shared/users/{{user_id}}
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has user data", function() {
+    expect(res.body).to.have.property('id');
+    expect(res.body).to.have.property('email');
+    expect(res.body).to.have.property('name');
+  });
+
+  test("User ID matches", function() {
+    expect(res.body.id).to.equal(parseInt(process.env.user_id || "1"));
+  });
+}

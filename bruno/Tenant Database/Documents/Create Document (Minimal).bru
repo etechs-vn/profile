@@ -1,0 +1,30 @@
+meta {
+  name: Create Document (Minimal)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/tenants/{{tenant_id}}/documents
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body {
+  {
+    "title": "Tài liệu đơn giản"
+  }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has document data", function() {
+    expect(res.body).to.have.property('id');
+    expect(res.body).to.have.property('title');
+  });
+}

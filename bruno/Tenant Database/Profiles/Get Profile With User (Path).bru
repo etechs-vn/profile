@@ -1,0 +1,25 @@
+meta {
+  name: Get Profile With User (Path)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/tenants/{{tenant_id}}/profiles/user/{{user_id}}
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has user and profile", function() {
+    expect(res.body).to.have.property('user');
+    expect(res.body).to.have.property('profile');
+  });
+
+  test("User data exists", function() {
+    expect(res.body.user).to.have.property('id');
+    expect(res.body.user).to.have.property('email');
+  });
+}

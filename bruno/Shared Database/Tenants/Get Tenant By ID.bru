@@ -1,0 +1,25 @@
+meta {
+  name: Get Tenant By ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/shared/tenants/{{tenant_id}}
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has tenant data", function() {
+    expect(res.body).to.have.property('id');
+    expect(res.body).to.have.property('tenant_id');
+    expect(res.body).to.have.property('name');
+  });
+
+  test("Tenant ID matches", function() {
+    expect(res.body.tenant_id).to.equal(process.env.tenant_id || "tenant_001");
+  });
+}

@@ -1,0 +1,38 @@
+meta {
+  name: Create Tenant
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/shared/tenants
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body {
+  {
+    "tenant_id": "tenant_001",
+    "name": "Công ty ABC",
+    "status": "active"
+  }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has tenant data", function() {
+    expect(res.body).to.have.property('id');
+    expect(res.body).to.have.property('tenant_id');
+    expect(res.body).to.have.property('name');
+    expect(res.body).to.have.property('status');
+  });
+
+  test("Tenant ID matches request", function() {
+    expect(res.body.tenant_id).to.equal("tenant_001");
+  });
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Get Profile By ID (Path)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/tenants/{{tenant_id}}/profiles/{{profile_id}}
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has profile data", function() {
+    expect(res.body).to.have.property('id');
+    expect(res.body).to.have.property('user_id');
+    expect(res.body).to.have.property('full_name');
+  });
+}

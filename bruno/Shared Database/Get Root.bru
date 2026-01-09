@@ -1,0 +1,19 @@
+meta {
+  name: Get Root
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has message", function() {
+    expect(res.body).to.have.property('message');
+  });
+}

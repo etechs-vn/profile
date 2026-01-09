@@ -1,0 +1,32 @@
+meta {
+  name: Create Profile (Minimal)
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/tenants/{{tenant_id}}/profiles
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body {
+  {
+    "user_id": {{user_id}},
+    "full_name": "Nguyễn Văn C"
+  }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has profile data", function() {
+    expect(res.body).to.have.property('id');
+    expect(res.body).to.have.property('user_id');
+    expect(res.body).to.have.property('full_name');
+  });
+}

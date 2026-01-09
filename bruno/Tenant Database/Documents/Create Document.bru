@@ -1,0 +1,37 @@
+meta {
+  name: Create Document
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/tenants/{{tenant_id}}/documents
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body {
+  {
+    "title": "Tài liệu quan trọng",
+    "content": "Nội dung tài liệu quan trọng...",
+    "file_path": "/documents/important.pdf"
+  }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has document data", function() {
+    expect(res.body).to.have.property('id');
+    expect(res.body).to.have.property('title');
+    expect(res.body).to.have.property('content');
+  });
+
+  test("Title matches request", function() {
+    expect(res.body.title).to.equal("Tài liệu quan trọng");
+  });
+}

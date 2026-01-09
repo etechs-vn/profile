@@ -1,0 +1,37 @@
+meta {
+  name: Create Tenant (Minimal)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/shared/tenants
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body {
+  {
+    "tenant_id": "tenant_002",
+    "name": "Công ty XYZ"
+  }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has tenant data", function() {
+    expect(res.body).to.have.property('id');
+    expect(res.body).to.have.property('tenant_id');
+    expect(res.body).to.have.property('name');
+    expect(res.body).to.have.property('status');
+  });
+
+  test("Status defaults to active", function() {
+    expect(res.body.status).to.equal("active");
+  });
+}

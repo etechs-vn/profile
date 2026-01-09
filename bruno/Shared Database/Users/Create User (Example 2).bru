@@ -1,0 +1,32 @@
+meta {
+  name: Create User (Example 2)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/shared/users
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body {
+  {
+    "email": "user2@example.com",
+    "name": "Trần Thị B"
+  }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has user data", function() {
+    expect(res.body).to.have.property('id');
+    expect(res.body).to.have.property('email');
+    expect(res.body).to.have.property('name');
+  });
+}
