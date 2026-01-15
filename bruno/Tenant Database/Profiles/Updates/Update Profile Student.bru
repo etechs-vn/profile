@@ -1,0 +1,39 @@
+meta {
+  name: Update Profile Student
+  type: http
+  seq: 1
+}
+
+put {
+  url: {{base_url}}/tenants/{{tenant_id}}/profiles/user/{{user_id}}/student
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "student_info": {
+      "school": "Đại học Bách Khoa",
+      "class": "K65-CNTT",
+      "major": "Khoa học máy tính",
+      "academic_year": "2020-2024"
+    }
+  }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Role is student", function() {
+    expect(res.body.role).to.equal("student");
+  });
+
+  test("Has student info", function() {
+    expect(res.body.student_info).to.be.an('object');
+    expect(res.body.student_info.school).to.equal("Đại học Bách Khoa");
+  });
+}

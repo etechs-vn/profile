@@ -1,0 +1,39 @@
+meta {
+  name: Update Profile Teacher
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{base_url}}/tenants/{{tenant_id}}/profiles/user/{{user_id}}/teacher
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "teacher_info": {
+      "work_unit": "THPT Chuyên Hà Nội - Amsterdam",
+      "subject": "Toán học",
+      "specialty": "Giải tích",
+      "title": "Thạc sĩ"
+    }
+  }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Role is teacher", function() {
+    expect(res.body.role).to.equal("teacher");
+  });
+
+  test("Has teacher info", function() {
+    expect(res.body.teacher_info).to.be.an('object');
+    expect(res.body.teacher_info.work_unit).to.equal("THPT Chuyên Hà Nội - Amsterdam");
+  });
+}

@@ -1,0 +1,39 @@
+meta {
+  name: Update Profile General
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{base_url}}/tenants/{{tenant_id}}/profiles/user/{{user_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "bio": "Đã cập nhật bio mới",
+    "privacy_settings": {
+      "visibility": "connections",
+      "show_contact": true,
+      "allow_interaction": false
+    }
+  }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Bio matches", function() {
+    expect(res.body.bio).to.equal("Đã cập nhật bio mới");
+  });
+
+  test("Privacy settings updated", function() {
+    expect(res.body.privacy_settings.visibility).to.equal("connections");
+    expect(res.body.privacy_settings.allow_interaction).to.be.false;
+  });
+}

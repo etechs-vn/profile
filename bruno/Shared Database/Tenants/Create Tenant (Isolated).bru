@@ -1,0 +1,42 @@
+meta {
+  name: Create Tenant (Isolated)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/shared/tenants
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "tenant_id": "tenant_isolated_01",
+    "name": "Isolated Corp",
+    "status": "active",
+    "db_host": "localhost",
+    "db_port": 5432,
+    "db_name": "custom_tenant_db",
+    "db_user": "postgres",
+    "db_password": "password",
+    "db_driver": "postgresql+asyncpg"
+  }
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Response has db_host info", function() {
+    expect(res.body).to.have.property('id');
+    expect(res.body).to.have.property('tenant_id');
+    expect(res.body).to.have.property('db_host');
+    expect(res.body.db_host).to.equal("localhost");
+  });
+}
