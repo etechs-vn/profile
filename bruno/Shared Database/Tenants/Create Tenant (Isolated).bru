@@ -23,7 +23,7 @@ body:json {
     "db_port": 5432,
     "db_name": "custom_tenant_db",
     "db_user": "postgres",
-    "db_password": "password",
+    "db_password": "postgres",
     "db_driver": "postgresql+asyncpg"
   }
 }
@@ -32,7 +32,7 @@ tests {
   test("Status code is 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("Response has db_host info", function() {
     expect(res.body).to.have.property('id');
     expect(res.body).to.have.property('tenant_id');

@@ -41,6 +41,24 @@ class DatabaseManager:
             self._initialize_shared_engine()
         return self._shared_engine
 
+    async def _get_tenant_config(self, tenant_id: str) -> dict | None:
+        """Helper để lấy thông tin cấu hình tenant từ Shared DB."""
+        # Import local để tránh circular import
+        from app.models.shared import Tenant
+
+        try:
+            shared_engine = self.get_shared_engine()
+            async with shared_engine.connect() as conn:
+                result = await conn.execute(
+                    select(Tenant.db_host, Tenant.db_port, Tenant.db_name, 
+                           Tenant.db_user, Tenant.db_password, Tenant.db_driver)
+                    .where(Tenant.tenant_id == tenant_id)
+                )
+                return result.mappings().one_or_none()
+        except Exception as e:
+            logger.error(f"Error fetching tenant config for {tenant_id}: {e}")
+            return None
+
     async def get_tenant_engine(self, tenant_id: str) -> AsyncEngine:
         """
         Lấy hoặc tạo mới engine cho tenant database.
@@ -49,25 +67,8 @@ class DatabaseManager:
         if tenant_id in self._tenant_engines:
             return self._tenant_engines[tenant_id]
 
-        # Import local để tránh circular import với app/models/shared.py
-        from app.models.shared import Tenant
-
         # 1. Tra cứu thông tin Tenant trong Shared DB
-        tenant_config = None
-        try:
-            shared_engine = self.get_shared_engine()
-            async with shared_engine.connect() as conn:
-                # Dùng select() để lấy thông tin
-                result = await conn.execute(
-                    select(Tenant.db_host, Tenant.db_port, Tenant.db_name, 
-                           Tenant.db_user, Tenant.db_password, Tenant.db_driver)
-                    .where(Tenant.tenant_id == tenant_id)
-                )
-                tenant_config = result.mappings().one_or_none()
-        except Exception as e:
-            logger.error(f"Error fetching tenant config for {tenant_id}: {e}")
-            # Fallback to default if error (e.g., table not migrated yet)
-            pass
+        tenant_config = await self._get_tenant_config(tenant_id)
 
         # 2. Quyết định Connection URL
         db_url = None
@@ -96,28 +97,21 @@ class DatabaseManager:
         )
         return self._tenant_engines[tenant_id]
 
-    async def _provision_tenant_database_postgres(self, tenant_id: str) -> None:
+    async def _provision_tenant_database_postgres(self, tenant_id: str, db_name: str | None = None, db_host: str | None = None) -> None:
         """
-        Postgres only (Default Strategy): Tạo database vật lý cho tenant nếu chưa tồn tại.
-        Không áp dụng cho Custom Strategy (Isolated DB) - giả định DB đã được setup bởi DevOps.
+        Postgres only: Tạo database vật lý cho tenant nếu chưa tồn tại.
+        Hỗ trợ cả Default Strategy và Custom Strategy (nếu trỏ về cùng server).
         """
         if not settings.postgres_server:
             return
 
-        # Check xem tenant này có dùng custom DB không? Nếu có thì skip provision
-        # Tuy nhiên, để tối ưu performance, ta có thể skip check DB query ở đây 
-        # và chỉ provision nếu đang dùng default naming convention.
-        # Hoặc đơn giản: hàm get_tenant_engine đã handle việc chọn URL.
-        # Hàm này chỉ được gọi bởi ensure_tenant_tables.
+        # Nếu db_host được cung cấp và khác localhost/postgres_server, ta không thể provision (assume remote).
+        # Đơn giản hóa: Nếu db_host != None và không phải localhost, skip.
+        if db_host and db_host not in ["localhost", "127.0.0.1", settings.postgres_server]:
+            logger.info(f"Skipping provision for remote host: {db_host}")
+            return
         
-        # Logic: Chỉ provision nếu ta đang dùng Default Strategy trên Postgres Server hiện tại.
-        # Nhưng việc check lại Shared DB ở đây hơi thừa. 
-        # Tạm thời: Ta vẫn chạy provision check cho tên database mặc định `tenant_{id}`.
-        # Nếu tenant dùng custom DB khác, lệnh này tạo ra `tenant_{id}` trên shared cluster nhưng tenant lại connect chỗ khác -> hơi rác nhưng không chết lỗi.
-        # Cải tiến: Ta có thể bỏ qua bước này, để `get_tenant_engine` return error nếu connect fail.
-        # Nhưng yêu cầu cũ là "tự động tạo".
-        
-        tenant_db_name = f"tenant_{tenant_id}"
+        target_db_name = db_name if db_name else f"tenant_{tenant_id}"
         
         maintenance_url = settings._build_postgres_url("postgres")
         temp_engine = create_async_engine(maintenance_url, isolation_level="AUTOCOMMIT")
@@ -125,13 +119,13 @@ class DatabaseManager:
         try:
             async with temp_engine.connect() as conn:
                 check_query = text(f"SELECT 1 FROM pg_database WHERE datname = :dbname")
-                result = await conn.execute(check_query, {"dbname": tenant_db_name})
+                result = await conn.execute(check_query, {"dbname": target_db_name})
                 
                 if not result.scalar():
-                    logger.info(f"Provisioning new default database for tenant: {tenant_db_name}")
-                    await conn.execute(text(f'CREATE DATABASE "{tenant_db_name}"'))
+                    logger.info(f"Provisioning new database for tenant: {target_db_name}")
+                    await conn.execute(text(f'CREATE DATABASE "{target_db_name}"'))
         except (OperationalError, ProgrammingError) as e:
-            logger.warning(f"Warning during tenant DB provisioning ({tenant_db_name}): {e}")
+            logger.warning(f"Warning during tenant DB provisioning ({target_db_name}): {e}")
         finally:
             await temp_engine.dispose()
 
@@ -142,12 +136,15 @@ class DatabaseManager:
         if tenant_id in self._tenant_tables_created:
             return
 
-        # 1. Provision (Chỉ có tác dụng nếu dùng Default Strategy Postgres)
-        # TODO: Để chính xác hơn, nên check xem tenant dùng Default hay Custom trước khi provision.
-        # Hiện tại cứ chạy provision safe-check cho default name.
-        await self._provision_tenant_database_postgres(tenant_id)
+        # 1. Fetch config để biết tên DB
+        tenant_config = await self._get_tenant_config(tenant_id)
+        db_name = tenant_config["db_name"] if tenant_config else None
+        db_host = tenant_config["db_host"] if tenant_config else None
 
-        # 2. Connect và tạo Tables (Schema)
+        # 2. Provision Database (nếu cần)
+        await self._provision_tenant_database_postgres(tenant_id, db_name=db_name, db_host=db_host)
+
+        # 3. Connect và tạo Tables (Schema)
         # get_tenant_engine giờ là async
         engine = await self.get_tenant_engine(tenant_id) 
         
