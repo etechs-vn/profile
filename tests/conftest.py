@@ -1,12 +1,16 @@
 import pytest
 import asyncio
+import shutil
+from pathlib import Path
 from typing import AsyncGenerator, Generator
+from unittest.mock import AsyncMock, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.base import SharedBase
 from app.db.database_manager import DatabaseManager
 from app.models.shared import Tenant
+from app.core.graph import GraphManager
 
 
 # --- Asyncio Fixture ---
@@ -18,10 +22,30 @@ def event_loop() -> Generator:
     loop.close()
 
 
-import shutil
-from pathlib import Path
-
 # ... (imports)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def mock_neo4j():
+    """Mock Neo4j driver for all tests."""
+    # driver.session() is a sync method that returns an async context manager
+    mock_session = AsyncMock()
+
+    mock_driver = MagicMock()
+    mock_driver.session.return_value.__aenter__.return_value = mock_session
+    mock_driver.session.return_value.__aexit__.return_value = None
+
+    # Mock close as async
+    mock_driver.close = AsyncMock()
+
+    # Mock the singleton
+    original_driver = GraphManager._driver
+    GraphManager._driver = mock_driver
+
+    yield mock_driver
+
+    # Restore
+    GraphManager._driver = original_driver
 
 
 @pytest.fixture(scope="session", autouse=True)

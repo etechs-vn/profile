@@ -6,16 +6,18 @@ from app.api.deps import (
     ProfileServiceHeaderDep,
     ProfileServicePathDep,
     ProfileServiceQueryDep,
+    ConnectionServicePathDep,
 )
 from app.schemas.profile import (
     ProfileCreate,
     ProfileResponse,
     ProfileUpdate,
-    SocialPostCreate,
-    SocialPostResponse,
     StudentProfileUpdate,
     TeacherProfileUpdate,
     TenantProfileResponse,
+    ConnectionCreate,
+    ConnectionResponse,
+    ConnectionUpdate,
 )
 
 router = APIRouter()
@@ -44,6 +46,15 @@ async def get_profile(
     profile_id: int = Path(...),
 ):
     return await service.get_profile_by_id(profile_id)
+
+
+@router.get("/{tenant_id}/profiles/slug/{slug}", response_model=ProfileResponse)
+async def get_profile_by_slug(
+    service: ProfileServicePathDep,
+    slug: str = Path(...),
+    viewer_id: int | None = Query(None),
+):
+    return await service.get_profile_by_slug(slug, viewer_user_id=viewer_id)
 
 
 @router.get(
@@ -87,28 +98,46 @@ async def update_profile_general(
     return await service.update_general_info(user_id, update_data)
 
 
+# --- Connection Endpoints ---
+
+
 @router.post(
-    "/{tenant_id}/profiles/user/{user_id}/posts", response_model=SocialPostResponse
+    "/{tenant_id}/profiles/user/{user_id}/connections",
+    response_model=ConnectionResponse,
 )
-async def create_social_post(
-    post_data: SocialPostCreate,
-    service: ProfileServicePathDep,
+async def send_connection_request(
+    connection_data: ConnectionCreate,
+    service: ConnectionServicePathDep,
     user_id: int = Path(...),
 ):
-    return await service.create_social_post(user_id, post_data)
+    return await service.send_request(user_id, connection_data)
+
+
+@router.put(
+    "/{tenant_id}/profiles/user/{user_id}/connections/{connection_id}",
+    response_model=ConnectionResponse,
+)
+async def respond_connection_request(
+    update_data: ConnectionUpdate,
+    service: ConnectionServicePathDep,
+    user_id: int = Path(...),
+    connection_id: int = Path(...),
+):
+    return await service.respond_to_request(user_id, connection_id, update_data.status)
 
 
 @router.get(
-    "/{tenant_id}/profiles/user/{user_id}/posts",
-    response_model=List[SocialPostResponse],
+    "/{tenant_id}/profiles/user/{user_id}/connections",
+    response_model=List[ProfileResponse],
 )
-async def get_social_posts(
-    service: ProfileServicePathDep,
+async def get_connections(
+    service: ConnectionServicePathDep,
     user_id: int = Path(...),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
 ):
-    return await service.get_social_posts(user_id, skip=skip, limit=limit)
+    return await service.get_connections(user_id)
+
+
+# --- Other ---
 
 
 @router.post("/profiles", response_model=ProfileResponse)

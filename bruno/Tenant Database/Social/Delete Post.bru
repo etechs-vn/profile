@@ -1,0 +1,20 @@
+meta {
+  name: Delete Post
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{base_url}}/tenants/{{tenant_id}}/social/user/:user_id/posts/:post_id
+}
+
+params:path {
+  user_id: {{user_id}}
+  post_id: 1
+}
+
+tests {
+  test("Status code is 204", function() {
+    expect(res.status).to.equal(204);
+  });
+}

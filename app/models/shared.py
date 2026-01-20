@@ -16,6 +16,12 @@ class User(SharedBase):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     email: Mapped[str] = mapped_column(unique=True, index=True)
     name: Mapped[str]
+
+    # Global Identity Fields
+    full_name: Mapped[str | None] = mapped_column(nullable=True)
+    slug: Mapped[str | None] = mapped_column(unique=True, index=True, nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc)
     )

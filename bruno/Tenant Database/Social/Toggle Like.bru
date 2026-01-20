@@ -1,0 +1,14 @@
+meta {
+  name: Toggle Like
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/tenants/{{tenant_id}}/social/user/:user_id/posts/:post_id/likes
+}
+
+params:path {
+  user_id: {{user_id}}
+  post_id: 1
+}

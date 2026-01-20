@@ -1,9 +1,7 @@
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import select
 
 from app.models.shared import User
-from app.models.tenant import Profile
 from app.schemas.profile import ProfileCreate, ProfileUpdate
 from app.services.profile_service import ProfileService
 

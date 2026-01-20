@@ -1,0 +1,13 @@
+meta {
+  name: Get Connections
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/tenants/{{tenant_id}}/profiles/user/:user_id/connections
+}
+
+params:path {
+  user_id: {{user_id}}
+}

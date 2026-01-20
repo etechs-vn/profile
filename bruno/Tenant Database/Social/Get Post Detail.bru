@@ -1,0 +1,13 @@
+meta {
+  name: Get Post Detail
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/tenants/{{tenant_id}}/social/posts/:post_id
+}
+
+params:path {
+  post_id: 1
+}

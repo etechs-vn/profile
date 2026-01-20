@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     # Shared Database
     shared_database_url: str | None = None
 
+    # Neo4j Configuration
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = "password"
+
     # Tenant Databases
     tenant_database_dir: str = "./tenants"
     tenant_database_template: str = "tenant_{tenant_id}.db"

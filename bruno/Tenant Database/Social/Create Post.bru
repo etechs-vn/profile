@@ -1,0 +1,24 @@
+meta {
+  name: Create Post
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/tenants/{{tenant_id}}/social/user/:user_id/posts
+}
+
+params:path {
+  user_id: {{user_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "content": "Hello World! This is my first post.",
+    "privacy": "public"
+  }
+}

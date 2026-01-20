@@ -11,6 +11,9 @@ class UserResponse(BaseModel):
     id: int
     email: str
     name: str
+    full_name: str | None = None
+    slug: str | None = None
+    avatar_url: str | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

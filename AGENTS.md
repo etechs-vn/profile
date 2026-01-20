@@ -1,187 +1,146 @@
 # AGENTS.md - Developer Guidelines for Profile API
 
-**Project:** FastAPI Multi-Tenant Backend | **Python:** 3.13+ | **Package Manager:** uv  
-**Language:** Code in English, Docstrings/Comments in Vietnamese
+**Project:** FastAPI Multi-Tenant Backend | **Python:** 3.13+ | **Package Manager:** uv
+**Language:** Code in English | **Docstrings & Comments:** Vietnamese (Tiếng Việt)
 
 ---
 
-## Quick Commands
+## 1. Development Environment
 
+### Setup & Run
 ```bash
-# Setup
+# Install dependencies
 uv sync
 
-# Development server
+# Run development server (Hot Reload)
 uv run uvicorn app.main:app --reload
 
-# Linting & Formatting
-uv run ruff format .              # Format code
-uv run ruff check .               # Lint code
-uv run ruff check --fix .         # Auto-fix issues
-uv run mypy app/                  # Type checking
+# Database Migrations (Alembic)
+uv run alembic upgrade head
+```
 
-# Testing
-uv run pytest                                              # All tests
-uv run pytest tests/test_profile_service.py                # Single file
-uv run pytest tests/test_profile_service.py::test_create   # Single test
-uv run pytest -k "profile"                                 # Pattern match
-uv run pytest --cov=app --cov-report=html                  # With coverage
+### Verification Commands
+**Always run these before requesting a review or finishing a task.**
+
+```bash
+# Format & Lint (Auto-fix)
+uv run ruff check --fix . && uv run ruff format .
+
+# Type Checking
+# Note: Ensure mypy is installed (uv add --dev mypy) if this command fails
+uv run mypy app/
+
+# Run All Tests
+uv run pytest
+
+# Run Specific Test (Recommended for TDD)
+# Syntax: uv run pytest path/to/file.py::function_name
+uv run pytest tests/test_profile_service.py::test_create_profile
 ```
 
 ---
 
-## Project Structure
+## 2. Code Style & Conventions
 
-```
-app/
-├── api/
-│   ├── deps.py              # DI types: SharedDB, TenantDBPath, TenantDBQuery
-│   └── v1/endpoints/        # Endpoint handlers
-├── core/config.py           # Settings (Pydantic BaseSettings)
-├── db/
-│   ├── base.py              # SharedBase & TenantBase declarative bases
-│   ├── database_manager.py  # Multi-tenant engine manager
-│   └── session.py           # Session factories
-├── models/
-│   ├── shared.py            # User, Tenant (SharedBase)
-│   └── tenant.py            # Profile, SocialPost, Document (TenantBase)
-├── schemas/                 # Pydantic DTOs (Create, Update, Response)
-└── services/                # Business logic layer
-```
+### Language Rules
+- **Code:** Variables, functions, classes, and logs must be in **English**.
+- **Documentation:** All docstrings and inline comments must be in **Vietnamese**.
+  - **Exception:** Test files may use English docstrings, but consistency is preferred.
+  ```python
+  def get_user(user_id: int):
+      """Lấy thông tin người dùng theo ID."""
+      # Kiểm tra cache trước khi gọi DB
+      pass
+  ```
 
----
+### Imports
+Order is strict. Use `ruff format` to enforce, but manually:
+1. **Standard Library:** `typing`, `datetime`, `uuid`
+2. **Third-Party:** `fastapi`, `sqlalchemy`, `pydantic`
+3. **Local Application:** Absolute imports only (`app.core...`)
+   ```python
+   from typing import Annotated
+   
+   from fastapi import Depends
+   from sqlalchemy import select
+   
+   from app.api.deps import SharedDB
+   from app.models.tenant import Profile
+   ```
 
-## Code Style
+### Naming
+- **Files/Vars/Funcs:** `snake_case` (`profile_service.py`, `user_id`)
+- **Classes/Types:** `PascalCase` (`ProfileService`, `ProfileCreate`)
+- **Constants:** `UPPER_SNAKE_CASE` (`MAX_RETRIES`)
+- **Private:** `_underscore_prefix` (`_helper_function`)
 
-### Import Order
-```python
-# 1. Standard library
-from datetime import datetime
-from typing import Annotated
+### Typing (Python 3.13+)
+- Use `|` for Union: `str | None` instead of `Optional[str]`.
+- Use `list[str]` instead of `List[str]`.
+- **Dependency Injection:** Use `Annotated` pattern in `app/api/deps.py`.
+  ```python
+  # Correct
+  async def create(db: Annotated[AsyncSession, Depends(get_db)])
+  ```
 
-# 2. Third-party
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-# 3. Local (absolute paths, alphabetically)
-from app.api.deps import SharedDB, TenantDBPath
-from app.models.tenant import Profile
-from app.schemas.profile import ProfileCreate
-```
-
-### Naming Conventions
-| Type | Convention | Example |
-|------|------------|---------|
-| Files & Variables | `snake_case` | `profile_service.py`, `user_id` |
-| Classes | `PascalCase` | `ProfileService`, `ProfileCreate` |
-| Functions/Methods | `snake_case` | `create_profile()` |
-| Private Methods | `_underscore` | `_get_profile_by_user_id()` |
-| Constants | `UPPER_SNAKE` | `MAX_RETRIES` |
-
-### Type Hints
-- **Always required** for function parameters and return types
-- Use modern syntax: `str | None` (not `Optional[str]`)
-- Use `Annotated` for dependency injection:
-```python
-SharedDB = Annotated[AsyncSession, Depends(get_shared_db)]
-TenantDBPath = Annotated[AsyncSession, Depends(get_tenant_db_from_path)]
-```
-
-### Async/Await
-- **All database operations MUST be async**
-- Always `await` async operations
-```python
-async def get_profile(self, profile_id: int) -> Profile | None:
-    result = await self.tenant_db.execute(
-        select(Profile).where(Profile.id == profile_id)
-    )
-    return result.scalar_one_or_none()
-```
+### Error Handling
+- **Exceptions:** Raise `HTTPException` with Vietnamese `detail`.
+  ```python
+  raise HTTPException(status_code=404, detail="Người dùng không tồn tại")
+  ```
+- **Logging:** Use standard logging or `structlog` (if available). Logs in English.
 
 ---
 
-## Architecture Patterns
+## 3. Architecture & Patterns
 
-### Multi-Tenant Strategy
-- **SharedBase:** User, Tenant (metadata in shared_db)
-- **TenantBase:** Profile, Document (data in tenant-specific db)
-- **Routing:** Tenant ID via Path (`/{tenant_id}/`) or Header (`X-Tenant-ID`)
+### Multi-Tenancy Strategy
+- **Shared DB:** Stores `User`, `Tenant` metadata (`SharedBase`).
+- **Tenant DB:** Stores isolated data like `Profile`, `Document` (`TenantBase`).
+- **Resolution:** Tenant determined via URL path `/{tenant_id}/...` or Header `X-Tenant-ID`.
+- **Testing:** Tests use `sqlite+aiosqlite:///:memory:` and file-based tenant DBs (managed by `conftest.py`).
 
-### Service Pattern
+### Service Layer Pattern
+Business logic resides in `app/services/`, not endpoints. Services are injected via `Depends`.
 ```python
 class ProfileService:
     def __init__(self, tenant_db: AsyncSession, shared_db: AsyncSession | None = None):
         self.tenant_db = tenant_db
-        self.shared_db = shared_db
+        # ...
 
-    async def create_profile(self, data: ProfileCreate) -> Profile:
-        new_profile = Profile(**data.model_dump())
-        self.tenant_db.add(new_profile)
-        await self.tenant_db.commit()
-        await self.tenant_db.refresh(new_profile)  # Get generated ID
-        return new_profile
+    async def create(self, data: ProfileCreate) -> Profile:
+        # Logic here
+        pass
 ```
 
-### Endpoint Pattern
-```python
-@router.post("/{tenant_id}/profiles", response_model=ProfileResponse)
-async def create_profile(
-    profile_data: ProfileCreate,
-    tenant_db: TenantDBPath,
-    shared_db: SharedDB,
-    tenant_id: str = Path(...),
-):
-    service = ProfileService(tenant_db, shared_db)
-    return await service.create_profile(profile_data)
-```
+### Database Operations (SQLAlchemy Async)
+- **Always** `await` database calls.
+- **Commit:** Explicitly `await db.commit()` after writes.
+- **Refresh:** `await db.refresh(obj)` to populate DB-generated fields (IDs, timestamps).
+- **Queries:** Use `await db.execute(select(Model)...)` then `.scalars().all()` or `.scalar_one_or_none()`.
+
+### Pydantic V2
+- Use `model_dump()` instead of `dict()`.
+- Use `model_validate()` instead of `from_orm()`.
+- Config: `model_config = ConfigDict(from_attributes=True)` (formerly `orm_mode`).
 
 ---
 
-## Error Handling
+## 4. Testing Guidelines
 
-```python
-from fastapi import HTTPException, status
-
-raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile khong ton tai")
-raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User da co profile")
-```
-
----
-
-## Pydantic Schemas
-
-```python
-class ProfileBase(BaseModel):
-    full_name: str
-    phone: str | None = None
-
-class ProfileCreate(ProfileBase):
-    user_id: int
-
-class ProfileResponse(ProfileBase):
-    id: int
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True  # Required for ORM models
-```
+- **Fixtures:** heavily used in `tests/conftest.py`.
+- **`db_manager`**: Creates fresh schema per test.
+- **`sample_tenant`**: Provides a ready-to-use tenant in Shared DB.
+- **Mocking:** Avoid mocking DB sessions; use the provided `sqlite` fixtures which emulate the real DB structure.
+- **Async Tests:** Use `@pytest.mark.asyncio`.
 
 ---
 
-## Critical Rules
+## 5. Critical Rules for Agents
 
-1. **Always use dependency injection** for database sessions (`SharedDB`, `TenantDBPath`)
-2. **Commit after writes:** `await db.commit()`
-3. **Refresh after insert:** `await db.refresh(obj)` to get generated IDs
-4. **Use SharedBase** for shared models, **TenantBase** for tenant models
-5. **Validate tenant existence** before creating tenant-specific resources
-6. **Use `from_attributes = True`** in Pydantic response models
-
-## Common Pitfalls
-
-- Don't mix sync and async code
-- Don't forget to `await` async operations
-- Don't commit inside loops (batch instead)
-- Don't use `SharedBase` for tenant-specific models
-- Don't expose internal errors to API responses
+1. **No Silent Failures:** Never use bare `try/except`. Log the error or raise `HTTPException`.
+2. **Path Safety:** Always validate `tenant_id` before performing tenant-specific operations.
+3. **Async Discipline:** Never use blocking I/O (like `time.sleep` or synchronous `requests`) in async routes.
+4. **Secrets:** Never commit `.env` files or hardcode credentials.
+5. **Modification:** When editing `AGENTS.md`, preserve these rules unless explicitly instructed to change logic.
+6. **No Reverts:** Do not revert code changes unless explicitly requested by the user.

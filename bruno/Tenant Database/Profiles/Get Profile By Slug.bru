@@ -1,0 +1,19 @@
+meta {
+  name: Get Profile By Slug
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/tenants/{{tenant_id}}/profiles/slug/:slug
+}
+
+params:path {
+  slug: nguyenvana
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+}
