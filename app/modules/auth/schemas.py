@@ -5,6 +5,9 @@ from pydantic import BaseModel, EmailStr, ConfigDict
 class UserCreate(BaseModel):
     email: EmailStr
     name: str
+    full_name: str | None = None
+    slug: str | None = None
+    avatar_url: str | None = None
 
 
 class UserResponse(BaseModel):

@@ -6,16 +6,21 @@ meta {
 
 post {
   url: {{base_url}}/shared/users
+  body: json
+  auth: none
 }
 
 headers {
   Content-Type: application/json
 }
 
-body {
+body:json {
   {
-    "email": "user1@example.com",
-    "name": "Nguyễn Văn A"
+    "email": "user2@example.com",
+    "name": "Nguyễn Văn A",
+    "full_name": "Nguyễn Văn A Full",
+    "slug": "nguyen-van-a",
+    "avatar_url": "https://example.com/avatar.jpg"
   }
 }
 
@@ -23,13 +28,15 @@ tests {
   test("Status code is 200", function() {
     expect(res.status).to.equal(200);
   });
-
+  
   test("Response has user data", function() {
     expect(res.body).to.have.property('id');
     expect(res.body).to.have.property('email');
     expect(res.body).to.have.property('name');
+    expect(res.body).to.have.property('full_name');
+    expect(res.body).to.have.property('slug');
   });
-
+  
   test("Email matches request", function() {
     expect(res.body.email).to.equal("user1@example.com");
   });

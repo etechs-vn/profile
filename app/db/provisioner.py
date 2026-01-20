@@ -8,7 +8,7 @@ from app.db.base import TenantBase
 
 # IMPORTANT: Import tenant models to ensure they are registered in metadata
 # This fixes the bug where tables were not created because models weren't loaded
-import app.models.tenant  # noqa: F401
+import app.modules.profile.models  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

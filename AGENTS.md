@@ -9,13 +9,16 @@
 
 ### Setup & Run
 ```bash
-# Install dependencies
+# 1. Environment Variables
+cp .env.example .env
+
+# 2. Install dependencies
 uv sync
 
-# Run development server (Hot Reload)
+# 3. Run development server (Hot Reload)
 uv run uvicorn app.main:app --reload
 
-# Database Migrations (Alembic)
+# 4. Database Migrations (Alembic)
 uv run alembic upgrade head
 ```
 
@@ -45,7 +48,7 @@ uv run pytest tests/test_profile_service.py::test_create_profile
 ### Language Rules
 - **Code:** Variables, functions, classes, and logs must be in **English**.
 - **Documentation:** All docstrings and inline comments must be in **Vietnamese**.
-  - **Exception:** Test files may use English docstrings, but consistency is preferred.
+  - **Exception:** Test files may use English docstrings.
   ```python
   def get_user(user_id: int):
       """Lấy thông tin người dùng theo ID."""
@@ -88,7 +91,7 @@ Order is strict. Use `ruff format` to enforce, but manually:
   ```python
   raise HTTPException(status_code=404, detail="Người dùng không tồn tại")
   ```
-- **Logging:** Use standard logging or `structlog` (if available). Logs in English.
+- **Logging:** Use standard logging or `structlog`. Logs in English.
 
 ---
 
@@ -116,7 +119,7 @@ class ProfileService:
 ### Database Operations (SQLAlchemy Async)
 - **Always** `await` database calls.
 - **Commit:** Explicitly `await db.commit()` after writes.
-- **Refresh:** `await db.refresh(obj)` to populate DB-generated fields (IDs, timestamps).
+- **Refresh:** `await db.refresh(obj)` to populate DB-generated fields.
 - **Queries:** Use `await db.execute(select(Model)...)` then `.scalars().all()` or `.scalar_one_or_none()`.
 
 ### Pydantic V2
@@ -131,16 +134,24 @@ class ProfileService:
 - **Fixtures:** heavily used in `tests/conftest.py`.
 - **`db_manager`**: Creates fresh schema per test.
 - **`sample_tenant`**: Provides a ready-to-use tenant in Shared DB.
-- **Mocking:** Avoid mocking DB sessions; use the provided `sqlite` fixtures which emulate the real DB structure.
+- **`mock_neo4j`**: Automatically mocks Neo4j sessions (no external dependency needed).
+- **Mocking:** Avoid mocking DB sessions; use the provided `sqlite` fixtures.
 - **Async Tests:** Use `@pytest.mark.asyncio`.
 
 ---
 
-## 5. Critical Rules for Agents
+## 5. Git & Workflow
+
+- **Commits:** Use Conventional Commits (e.g., `feat: add profile endpoint`, `fix: validate tenant id`).
+- **Secrets:** Never commit `.env` or credentials.
+- **Branches:** Create new branches for features; do not push directly to main unless authorized.
+
+---
+
+## 6. Critical Rules for Agents
 
 1. **No Silent Failures:** Never use bare `try/except`. Log the error or raise `HTTPException`.
 2. **Path Safety:** Always validate `tenant_id` before performing tenant-specific operations.
 3. **Async Discipline:** Never use blocking I/O (like `time.sleep` or synchronous `requests`) in async routes.
-4. **Secrets:** Never commit `.env` files or hardcode credentials.
-5. **Modification:** When editing `AGENTS.md`, preserve these rules unless explicitly instructed to change logic.
-6. **No Reverts:** Do not revert code changes unless explicitly requested by the user.
+4. **Modification:** When editing `AGENTS.md`, preserve these rules unless explicitly instructed to change logic.
+5. **No Reverts:** Do not revert code changes unless explicitly requested by the user.

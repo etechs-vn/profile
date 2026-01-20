@@ -2,15 +2,31 @@ from typing import List
 
 from fastapi import APIRouter, Path, Query
 
-from app.api.deps import SocialServicePathDep
-from app.schemas.profile import (
+from app.api.deps import SocialServicePathDep, ConnectionServicePathDep
+from app.modules.social.schemas import (
     SocialPostCreate,
     SocialPostResponse,
     CommentCreate,
     CommentResponse,
+    ConnectionCreate,
+    ConnectionResponse,
+    ConnectionUpdate,
 )
+from app.modules.social.schemas import (
+    SocialPostResponse as ProfileResponse,
+)  # Wait, get_connections returns ProfileResponse?
+
+# Check logic: get_connections returns List[ProfileResponse].
+# But ProfileResponse is in Profile module.
+# So we need to import ProfileResponse from Profile Schemas (or Shared if moved).
+# Currently ProfileResponse is in app.modules.profile.schemas.
+
+from app.modules.profile.schemas import ProfileResponse
 
 router = APIRouter()
+
+
+# --- Social Posts Endpoints ---
 
 
 @router.post(
@@ -84,3 +100,42 @@ async def delete_post(
     post_id: int = Path(...),
 ):
     await service.delete_post(user_id, post_id)
+
+
+# --- Connection Endpoints ---
+
+
+@router.post(
+    "/{tenant_id}/profiles/user/{user_id}/connections",
+    response_model=ConnectionResponse,
+)
+async def send_connection_request(
+    connection_data: ConnectionCreate,
+    service: ConnectionServicePathDep,
+    user_id: int = Path(...),
+):
+    return await service.send_request(user_id, connection_data)
+
+
+@router.put(
+    "/{tenant_id}/profiles/user/{user_id}/connections/{connection_id}",
+    response_model=ConnectionResponse,
+)
+async def respond_connection_request(
+    update_data: ConnectionUpdate,
+    service: ConnectionServicePathDep,
+    user_id: int = Path(...),
+    connection_id: int = Path(...),
+):
+    return await service.respond_to_request(user_id, connection_id, update_data.status)
+
+
+@router.get(
+    "/{tenant_id}/profiles/user/{user_id}/connections",
+    response_model=List[ProfileResponse],
+)
+async def get_connections(
+    service: ConnectionServicePathDep,
+    user_id: int = Path(...),
+):
+    return await service.get_connections(user_id)

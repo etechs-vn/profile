@@ -9,9 +9,8 @@ from app.db.session import (
     get_tenant_db_from_path,
     get_tenant_db_from_query,
 )
-from app.services.profile_service import ProfileService
-from app.services.connection_service import ConnectionService
-from app.services.social_service import SocialService
+from app.modules.profile.service import ProfileService
+from app.modules.social.service import ConnectionService, SocialService
 
 # Shared DB Dependency
 SharedDB = Annotated[AsyncSession, Depends(get_shared_db)]

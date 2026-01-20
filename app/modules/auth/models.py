@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import SharedBase
@@ -21,14 +19,6 @@ class User(SharedBase):
     full_name: Mapped[str | None] = mapped_column(nullable=True)
     slug: Mapped[str | None] = mapped_column(unique=True, index=True, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(nullable=True)
-
-    created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc)
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-    )
 
 
 class Tenant(SharedBase):
@@ -54,11 +44,3 @@ class Tenant(SharedBase):
     db_driver: Mapped[str | None] = mapped_column(
         default="postgresql+asyncpg"
     )  # hoặc sqlite+aiosqlite
-
-    created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc)
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-    )

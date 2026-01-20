@@ -2,7 +2,7 @@ import logging
 from sqlalchemy import select, RowMapping
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from app.models.shared import Tenant
+from app.modules.auth.models import Tenant
 
 logger = logging.getLogger(__name__)
 

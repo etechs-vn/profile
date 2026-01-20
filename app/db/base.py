@@ -1,37 +1,35 @@
-from sqlalchemy.orm import DeclarativeBase
+from datetime import datetime, timezone
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-class SharedBase(DeclarativeBase):
+class TimestampMixin:
+    """
+    Mixin cung cấp các trường created_at và updated_at tự động.
+    Sử dụng timezone-naive datetime (UTC) để tương thích tốt với PostgreSQL Timestamp.
+    """
+
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+    )
+
+
+class SharedBase(DeclarativeBase, TimestampMixin):
     """
     Base class cho tất cả SQLAlchemy models thuộc **shared database**.
     Các model dùng chung (users, tenants, ...) nên kế thừa từ class này.
-
-    Ví dụ:
-        from app.db.base import SharedBase
-        from sqlalchemy import Column, Integer, String
-
-        class User(SharedBase):
-            __tablename__ = "users"
-            id = Column(Integer, primary_key=True)
-            name = Column(String)
     """
 
     pass
 
 
-class TenantBase(DeclarativeBase):
+class TenantBase(DeclarativeBase, TimestampMixin):
     """
     Base class cho tất cả SQLAlchemy models thuộc **tenant databases**.
     Mỗi tenant database sẽ chứa schema riêng dựa trên TenantBase.
-
-    Ví dụ:
-        from app.db.base import TenantBase
-        from sqlalchemy import Column, Integer, String
-
-        class Profile(TenantBase):
-            __tablename__ = "profiles"
-            id = Column(Integer, primary_key=True)
-            name = Column(String)
     """
 
     pass

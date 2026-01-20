@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.base import SharedBase
 from app.db.database_manager import DatabaseManager
-from app.models.shared import Tenant
+from app.modules.auth.models import Tenant
 from app.core.graph import GraphManager
 
 
@@ -120,3 +120,30 @@ async def sample_tenant(shared_db: AsyncSession) -> Tenant:
     await shared_db.commit()
     await shared_db.refresh(tenant)
     return tenant
+
+
+# --- API Client Fixture ---
+from httpx import AsyncClient, ASGITransport
+from app.main import app
+from app.db.session import get_shared_db
+
+
+@pytest.fixture(scope="function")
+async def client(shared_db) -> AsyncGenerator[AsyncClient, None]:
+    """
+    Returns an async client with database dependency overridden.
+    """
+
+    # Override dependency to use the test session
+    async def override_get_shared_db():
+        yield shared_db
+
+    app.dependency_overrides[get_shared_db] = override_get_shared_db
+
+    # Create client
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c
+
+    # Clean up
+    app.dependency_overrides.clear()

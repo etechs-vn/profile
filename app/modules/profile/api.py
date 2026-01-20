@@ -6,18 +6,14 @@ from app.api.deps import (
     ProfileServiceHeaderDep,
     ProfileServicePathDep,
     ProfileServiceQueryDep,
-    ConnectionServicePathDep,
 )
-from app.schemas.profile import (
+from app.modules.profile.schemas import (
     ProfileCreate,
     ProfileResponse,
     ProfileUpdate,
     StudentProfileUpdate,
     TeacherProfileUpdate,
     TenantProfileResponse,
-    ConnectionCreate,
-    ConnectionResponse,
-    ConnectionUpdate,
 )
 
 router = APIRouter()
@@ -96,45 +92,6 @@ async def update_profile_general(
     user_id: int = Path(...),
 ):
     return await service.update_general_info(user_id, update_data)
-
-
-# --- Connection Endpoints ---
-
-
-@router.post(
-    "/{tenant_id}/profiles/user/{user_id}/connections",
-    response_model=ConnectionResponse,
-)
-async def send_connection_request(
-    connection_data: ConnectionCreate,
-    service: ConnectionServicePathDep,
-    user_id: int = Path(...),
-):
-    return await service.send_request(user_id, connection_data)
-
-
-@router.put(
-    "/{tenant_id}/profiles/user/{user_id}/connections/{connection_id}",
-    response_model=ConnectionResponse,
-)
-async def respond_connection_request(
-    update_data: ConnectionUpdate,
-    service: ConnectionServicePathDep,
-    user_id: int = Path(...),
-    connection_id: int = Path(...),
-):
-    return await service.respond_to_request(user_id, connection_id, update_data.status)
-
-
-@router.get(
-    "/{tenant_id}/profiles/user/{user_id}/connections",
-    response_model=List[ProfileResponse],
-)
-async def get_connections(
-    service: ConnectionServicePathDep,
-    user_id: int = Path(...),
-):
-    return await service.get_connections(user_id)
 
 
 # --- Other ---

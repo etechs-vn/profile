@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import text
 from app.db.database_manager import DatabaseManager
-from app.models.shared import Tenant
+from app.modules.auth.models import Tenant
 
 
 @pytest.mark.asyncio

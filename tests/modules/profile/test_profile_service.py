@@ -1,9 +1,9 @@
 import pytest
 from fastapi import HTTPException
 
-from app.models.shared import User
-from app.schemas.profile import ProfileCreate, ProfileUpdate
-from app.services.profile_service import ProfileService
+from app.modules.auth.models import User
+from app.modules.profile.schemas import ProfileCreate, ProfileUpdate
+from app.modules.profile.service import ProfileService
 
 
 @pytest.fixture

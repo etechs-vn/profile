@@ -3,8 +3,8 @@ from typing import List
 from fastapi import APIRouter, Path
 
 from app.api.deps import TenantDBPath
-from app.schemas.document import DocumentCreate, DocumentResponse
-from app.services.document_service import DocumentService
+from app.modules.document.schemas import DocumentCreate, DocumentResponse
+from app.modules.document.service import DocumentService
 
 router = APIRouter()
 

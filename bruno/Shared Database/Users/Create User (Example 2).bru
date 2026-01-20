@@ -6,16 +6,20 @@ meta {
 
 post {
   url: {{base_url}}/shared/users
+  body: json
+  auth: none
 }
 
 headers {
   Content-Type: application/json
 }
 
-body {
+body:json {
   {
     "email": "user2@example.com",
-    "name": "Trần Thị B"
+    "name": "Trần Thị B",
+    "full_name": "Trần Thị B (Full)",
+    "slug": "tran-thi-b"
   }
 }
 

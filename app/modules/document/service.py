@@ -2,8 +2,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
-from app.models.tenant import Document
-from app.schemas.document import DocumentCreate
+from app.modules.document.models import Document
+from app.modules.document.schemas import DocumentCreate
 
 
 class DocumentService:

@@ -3,9 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
 from app.core.graph import GraphManager
-from app.models.shared import User
-from app.models.tenant import Profile
-from app.schemas.profile import (
+from app.modules.auth.models import User
+from app.modules.profile.models import Profile
+from app.modules.profile.schemas import (
     ProfileCreate,
     ProfileResponse,
     ProfileUpdate,
@@ -13,8 +13,8 @@ from app.schemas.profile import (
     TeacherProfileUpdate,
     TenantProfileResponse,
 )
-from app.schemas.shared import UserResponse
-from app.services.connection_service import ConnectionService
+from app.modules.auth.schemas import UserResponse
+from app.modules.social.service import ConnectionService
 
 
 class ProfileService:
@@ -213,7 +213,7 @@ class ProfileService:
         )
         profile = result.scalar_one_or_none()
 
-        from app.schemas.profile import ProfileResponse
+        from app.modules.profile.schemas import ProfileResponse
 
         return TenantProfileResponse(
             user=UserResponse.model_validate(user),
