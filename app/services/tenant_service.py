@@ -6,6 +6,7 @@ from app.models.shared import User, Tenant
 from app.schemas.shared import UserCreate, TenantCreate
 from app.db.database_manager import db_manager
 
+
 class TenantService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -13,7 +14,9 @@ class TenantService:
     async def create_user(self, user_data: UserCreate) -> User:
         """Tạo user mới trong shared database."""
         # Check exist
-        result = await self.db.execute(select(User).where(User.email == user_data.email))
+        result = await self.db.execute(
+            select(User).where(User.email == user_data.email)
+        )
         if result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email đã tồn tại")
 
@@ -30,7 +33,7 @@ class TenantService:
         if not user:
             raise HTTPException(status_code=404, detail="User không tồn tại")
         return user
-        
+
     async def get_all_users(self):
         result = await self.db.execute(select(User))
         return result.scalars().all()
@@ -38,7 +41,9 @@ class TenantService:
     async def create_tenant(self, tenant_data: TenantCreate) -> Tenant:
         """Tạo tenant mới."""
         # Check exist
-        result = await self.db.execute(select(Tenant).where(Tenant.tenant_id == tenant_data.tenant_id))
+        result = await self.db.execute(
+            select(Tenant).where(Tenant.tenant_id == tenant_data.tenant_id)
+        )
         if result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Tenant ID đã tồn tại")
 
@@ -62,16 +67,18 @@ class TenantService:
         try:
             await db_manager.ensure_tenant_tables(new_tenant.tenant_id)
         except Exception as e:
-            # Log error but don't fail the request completely? 
+            # Log error but don't fail the request completely?
             # Or fail? If DB creation fails, the tenant is kinda useless.
-            # But the record exists. 
+            # But the record exists.
             # Let's let it raise for now, so the user knows something went wrong.
             raise e
 
         return new_tenant
 
     async def get_tenant(self, tenant_id: str) -> Tenant:
-        result = await self.db.execute(select(Tenant).where(Tenant.tenant_id == tenant_id))
+        result = await self.db.execute(
+            select(Tenant).where(Tenant.tenant_id == tenant_id)
+        )
         tenant = result.scalar_one_or_none()
         if not tenant:
             raise HTTPException(status_code=404, detail="Tenant không tồn tại")

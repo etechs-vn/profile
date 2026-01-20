@@ -1,9 +1,11 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
+
 
 class UserCreate(BaseModel):
     email: EmailStr
     name: str
+
 
 class UserResponse(BaseModel):
     id: int
@@ -11,14 +13,14 @@ class UserResponse(BaseModel):
     name: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class TenantCreate(BaseModel):
     tenant_id: str
     name: str
     status: str = "active"
-    
+
     # Custom Database Info (Optional)
     db_host: str | None = None
     db_port: int | None = None
@@ -26,6 +28,7 @@ class TenantCreate(BaseModel):
     db_user: str | None = None
     db_password: str | None = None
     db_driver: str | None = None
+
 
 class TenantResponse(BaseModel):
     id: int
@@ -35,5 +38,4 @@ class TenantResponse(BaseModel):
     db_host: str | None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

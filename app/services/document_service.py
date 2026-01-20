@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from app.models.tenant import Document
 from app.schemas.document import DocumentCreate
 
+
 class DocumentService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -28,7 +29,9 @@ class DocumentService:
 
     async def get_document(self, document_id: int) -> Document:
         """Lấy document theo ID."""
-        result = await self.db.execute(select(Document).where(Document.id == document_id))
+        result = await self.db.execute(
+            select(Document).where(Document.id == document_id)
+        )
         document = result.scalar_one_or_none()
         if not document:
             raise HTTPException(status_code=404, detail="Document không tồn tại")

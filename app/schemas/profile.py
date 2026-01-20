@@ -1,66 +1,77 @@
 from datetime import datetime
-from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel, Field, ConfigDict
+
+from app.schemas.shared import UserResponse
 
 # --- Sub-schemas ---
 
-class StudentInfo(BaseModel):
-    school: Optional[str] = None
-    class_name: Optional[str] = Field(None, alias="class")
-    major: Optional[str] = None
-    academic_year: Optional[str] = None
 
-    class Config:
-        populate_by_name = True
+class StudentInfo(BaseModel):
+    school: str | None = None
+    class_name: str | None = Field(None, alias="class")
+    major: str | None = None
+    academic_year: str | None = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
 
 class TeacherInfo(BaseModel):
-    work_unit: Optional[str] = None
-    subject: Optional[str] = None
-    specialty: Optional[str] = None
-    title: Optional[str] = None
+    work_unit: str | None = None
+    subject: str | None = None
+    specialty: str | None = None
+    title: str | None = None
+
 
 class PrivacySettings(BaseModel):
     visibility: str = "public"  # public, private, connections
     show_contact: bool = False
     allow_interaction: bool = True
 
+
 # --- Main Schemas ---
 
-class ProfileBase(BaseModel):
+
+class ProfileCreateBase(BaseModel):
     full_name: str
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    bio: Optional[str] = None
-    avatar_url: Optional[str] = None
+    phone: str | None = None
+    address: str | None = None
+    bio: str | None = None
+    avatar_url: str | None = None
+
+
+class ProfileBase(ProfileCreateBase):
     role: str = "unspecified"
     verification_status: str = "unverified"
-    student_info: Optional[StudentInfo] = None
-    teacher_info: Optional[TeacherInfo] = None
-    privacy_settings: Optional[PrivacySettings] = Field(default_factory=lambda: PrivacySettings())
+    student_info: StudentInfo | None = None
+    teacher_info: TeacherInfo | None = None
+    privacy_settings: PrivacySettings | None = Field(
+        default_factory=lambda: PrivacySettings()
+    )
 
-class ProfileCreate(BaseModel):
+
+class ProfileCreate(ProfileCreateBase):
     user_id: int
-    full_name: str
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    bio: Optional[str] = None
-    avatar_url: Optional[str] = None
+
 
 class ProfileUpdate(BaseModel):
-    full_name: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    bio: Optional[str] = None
-    avatar_url: Optional[str] = None
-    privacy_settings: Optional[PrivacySettings] = None
+    full_name: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    bio: str | None = None
+    avatar_url: str | None = None
+    privacy_settings: PrivacySettings | None = None
+
 
 class StudentProfileUpdate(BaseModel):
     student_info: StudentInfo
     # Tự động cập nhật role thành student trong logic xử lý
 
+
 class TeacherProfileUpdate(BaseModel):
     teacher_info: TeacherInfo
     # Tự động cập nhật role thành teacher trong logic xử lý
+
 
 class ProfileResponse(ProfileBase):
     id: int
@@ -68,33 +79,35 @@ class ProfileResponse(ProfileBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 # --- Social Post Schemas ---
 
+
 class SocialPostCreate(BaseModel):
     content: str
-    media_urls: Optional[List[str]] = None
+    media_urls: list[str] | None = None
     privacy: str = "public"
+
 
 class SocialPostResponse(BaseModel):
     id: int
     profile_id: int
     content: str
-    media_urls: Optional[List[str]] = None
+    media_urls: list[str] | None = None
     privacy: str
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 # --- Combined Response ---
 
-class TenantProfileResponse(BaseModel):
-    user: Dict[str, Any]
-    profile: Optional[ProfileResponse] = None
 
-    class Config:
-        from_attributes = True
+class TenantProfileResponse(BaseModel):
+    user: UserResponse
+    profile: ProfileResponse | None = None
+
+    model_config = ConfigDict(from_attributes=True)

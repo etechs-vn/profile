@@ -41,4 +41,3 @@ class TenantBase(DeclarativeBase):
 # - Giữ tên Base để không phải sửa quá nhiều import cũ.
 # - Mặc định ánh xạ Base -> SharedBase (shared database).
 Base = SharedBase
-
