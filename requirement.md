@@ -1,0 +1,2 @@
+Xem xét database và thực hiện lên kế hoạch đánh giá yêu cầu này:
+- Mỗi user sẽ có 1 tenant db thuộc về user đó, hiện tại shared db có bảng user và tenant liên kết với nhau. Nhưng các endpoint (VD: /tenants/{tenant_id}/users/{user_id}/profile) lại dựa vapf tenant_id, nhưng tôi thấy dùng user_id dễ hơn. Đánh giá ưu nhược điểm
