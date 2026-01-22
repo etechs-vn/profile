@@ -4,11 +4,15 @@ import shutil
 from pathlib import Path
 from typing import AsyncGenerator, Generator
 from unittest.mock import AsyncMock, MagicMock
+from httpx import AsyncClient, ASGITransport
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.base import SharedBase
 from app.db.database_manager import DatabaseManager
+from app.db.session import get_shared_db
+from app.main import app
 from app.modules.auth.models import Tenant
 from app.core.graph import GraphManager
 
@@ -123,9 +127,6 @@ async def sample_tenant(shared_db: AsyncSession) -> Tenant:
 
 
 # --- API Client Fixture ---
-from httpx import AsyncClient, ASGITransport
-from app.main import app
-from app.db.session import get_shared_db
 
 
 @pytest.fixture(scope="function")

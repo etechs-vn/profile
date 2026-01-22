@@ -1,5 +1,6 @@
 import logging
 from typing import OrderedDict, Any
+
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -8,8 +9,8 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import settings
-from app.db.tenant_config import TenantConfigProvider
 from app.db.provisioner import TenantProvisioner
+from app.db.tenant_config import TenantConfigProvider
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +43,10 @@ class DatabaseManager:
 
         # Helper components
         assert self._shared_engine is not None
-        self.config_provider = TenantConfigProvider(self._shared_engine)
-        self.provisioner = TenantProvisioner()
+        self.config_provider: TenantConfigProvider = TenantConfigProvider(
+            self._shared_engine
+        )
+        self.provisioner: TenantProvisioner = TenantProvisioner()
 
     def _initialize_shared_engine(self) -> None:
         """Khởi tạo shared database engine."""
