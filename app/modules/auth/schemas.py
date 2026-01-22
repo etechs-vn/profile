@@ -8,6 +8,7 @@ class UserCreate(BaseModel):
     full_name: str | None = None
     slug: str | None = None
     avatar_url: str | None = None
+    tenant_id: str | None = None
 
 
 class UserResponse(BaseModel):
@@ -17,6 +18,7 @@ class UserResponse(BaseModel):
     full_name: str | None = None
     slug: str | None = None
     avatar_url: str | None = None
+    tenant_id: str | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

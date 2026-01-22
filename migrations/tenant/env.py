@@ -7,10 +7,11 @@ from alembic import context
 
 from app.db.base import TenantBase
 from app.db.database_manager import db_manager
-from app.models.shared import Tenant
+from app.modules.auth.models import Tenant
 
 # Import models to ensure they are registered in metadata
-from app.models import tenant as tenant_models  # noqa
+from app.modules.profile import models as profile_models  # noqa
+from app.modules.social import models as social_models  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

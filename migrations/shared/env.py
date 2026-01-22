@@ -11,7 +11,7 @@ from app.db.base import SharedBase
 from app.core.config import settings
 
 # Import models to ensure they are registered in metadata
-from app.models import shared as shared_models  # noqa
+from app.modules.auth import models as auth_models  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

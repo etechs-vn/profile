@@ -1,3 +1,4 @@
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import SharedBase
@@ -19,6 +20,11 @@ class User(SharedBase):
     full_name: Mapped[str | None] = mapped_column(nullable=True)
     slug: Mapped[str | None] = mapped_column(unique=True, index=True, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(nullable=True)
+
+    # Tenant Association (1 User belongs to 1 Tenant)
+    tenant_id: Mapped[str | None] = mapped_column(
+        ForeignKey("tenants.tenant_id"), index=True, nullable=True
+    )
 
 
 class Tenant(SharedBase):
