@@ -31,64 +31,68 @@ async def tenant_db(db_manager, sample_tenant):
 @pytest.mark.asyncio
 async def test_create_profile(tenant_db, shared_db, sample_user):
     service = ProfileService(tenant_db, shared_db)
-    data = ProfileCreate(
-        user_id=sample_user.id, full_name="Nguyen Van A", bio="Developer"
-    )
+    data = ProfileCreate(nickname="Nguyen Van A", bio="Developer")
 
-    profile = await service.create_profile(data)
+    profile = await service.create_profile(sample_user.id, data)
 
-    assert profile.id is not None
+    assert profile.profile_id is not None
     assert profile.user_id == sample_user.id
-    assert profile.full_name == "Nguyen Van A"
+    assert profile.nickname == "Nguyen Van A"
     assert profile.bio == "Developer"
-    assert profile.role == "unspecified"
-
-
-@pytest.mark.asyncio
-async def test_create_profile_user_not_found(tenant_db, shared_db):
-    service = ProfileService(tenant_db, shared_db)
-    data = ProfileCreate(
-        user_id=9999,  # Non-existent ID
-        full_name="Ghost User",
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await service.create_profile(data)
-
-    assert exc.value.status_code == 404
-    assert "User không tồn tại" in exc.value.detail
 
 
 @pytest.mark.asyncio
 async def test_create_profile_duplicate(tenant_db, shared_db, sample_user):
     service = ProfileService(tenant_db, shared_db)
-    data = ProfileCreate(user_id=sample_user.id, full_name="First Profile")
+    data = ProfileCreate(nickname="First Profile")
 
     # Create first time
-    await service.create_profile(data)
+    await service.create_profile(sample_user.id, data)
 
     # Create second time
     with pytest.raises(HTTPException) as exc:
-        await service.create_profile(data)
+        await service.create_profile(sample_user.id, data)
 
     assert exc.value.status_code == 400
     assert "Profile đã tồn tại" in exc.value.detail
 
 
 @pytest.mark.asyncio
-async def test_update_general_info(tenant_db, shared_db, sample_user):
+async def test_update_profile(tenant_db, shared_db, sample_user):
     # Setup
     service = ProfileService(tenant_db, shared_db)
-    create_data = ProfileCreate(user_id=sample_user.id, full_name="Old Name")
-    await service.create_profile(create_data)
+    create_data = ProfileCreate(nickname="Old Name")
+    profile = await service.create_profile(sample_user.id, create_data)
 
     # Update
-    update_data = ProfileUpdate(full_name="New Name", bio="New Bio")
-    updated_profile = await service.update_general_info(sample_user.id, update_data)
+    update_data = ProfileUpdate(nickname="New Name", bio="New Bio")
+    updated_profile = await service.update_profile(profile.profile_id, update_data)
 
-    assert updated_profile.full_name == "New Name"
+    assert updated_profile.nickname == "New Name"
     assert updated_profile.bio == "New Bio"
 
     # Verify persistence
-    db_profile = await service.get_profile_by_id(updated_profile.id)
-    assert db_profile.full_name == "New Name"
+    db_profile = await service.get_profile_by_id(profile.profile_id)
+    assert db_profile.nickname == "New Name"
+
+
+@pytest.mark.asyncio
+async def test_get_profile_by_user_id(tenant_db, shared_db, sample_user):
+    service = ProfileService(tenant_db, shared_db)
+    create_data = ProfileCreate(nickname="Test User")
+    await service.create_profile(sample_user.id, create_data)
+
+    profile = await service.get_profile_by_user_id(sample_user.id)
+
+    assert profile.nickname == "Test User"
+
+
+@pytest.mark.asyncio
+async def test_get_profile_by_user_id_not_found(tenant_db, shared_db):
+    service = ProfileService(tenant_db, shared_db)
+
+    with pytest.raises(HTTPException) as exc:
+        await service.get_profile_by_user_id(9999)
+
+    assert exc.value.status_code == 404
+    assert "Profile chưa được tạo cho user này" in exc.value.detail

@@ -1,99 +1,114 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from app.modules.auth.schemas import UserResponse
-
-# --- Sub-schemas ---
+from pydantic import BaseModel, ConfigDict
 
 
-class StudentInfo(BaseModel):
-    school: str | None = None
-    class_name: str | None = Field(None, alias="class")
-    major: str | None = None
-    academic_year: str | None = None
-
-    model_config = ConfigDict(populate_by_name=True)
-
-
-class TeacherInfo(BaseModel):
-    work_unit: str | None = None
-    subject: str | None = None
-    specialty: str | None = None
-    title: str | None = None
+# --- Education Schemas ---
+class EducationBase(BaseModel):
+    education_level: str | None = None
+    institution_name: str | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    is_current: bool | None = None
+    credential_type: str | None = None
+    credential_title: str | None = None
+    issuing_organization: str | None = None
+    credential_ref: str | None = None
+    metadata_id: str | None = None
 
 
-class PrivacySettings(BaseModel):
-    visibility: str = "public"  # public, private, connections
-    dob_visibility: str = "friends"
-    email_visibility: str = "private"
-    education_visibility: str = "public"
-    show_contact: bool = False
-    allow_interaction: bool = True
+class EducationCreate(EducationBase):
+    pass
 
 
-# --- Main Schemas ---
-
-
-class ProfileCreateBase(BaseModel):
-    full_name: str
-    slug: str | None = None
-    dob: date | None = None
-    phone: str | None = None
-    address: str | None = None
-    bio: str | None = None
-    avatar_url: str | None = None
-
-
-class ProfileBase(ProfileCreateBase):
-    role: str = "unspecified"
-    verification_status: str = "unverified"
-    student_info: StudentInfo | None = None
-    teacher_info: TeacherInfo | None = None
-    privacy_settings: PrivacySettings | None = Field(
-        default_factory=lambda: PrivacySettings()
-    )
-
-
-class ProfileCreate(ProfileCreateBase):
-    user_id: int
-
-
-class ProfileUpdate(BaseModel):
-    full_name: str | None = None
-    slug: str | None = None
-    dob: date | None = None
-    phone: str | None = None
-    address: str | None = None
-    bio: str | None = None
-    avatar_url: str | None = None
-    privacy_settings: PrivacySettings | None = None
-
-
-class StudentProfileUpdate(BaseModel):
-    student_info: StudentInfo
-    # Tự động cập nhật role thành student trong logic xử lý
-
-
-class TeacherProfileUpdate(BaseModel):
-    teacher_info: TeacherInfo
-    # Tự động cập nhật role thành teacher trong logic xử lý
-
-
-class ProfileResponse(ProfileBase):
-    id: int
-    user_id: int
+class EducationResponse(EducationBase):
+    education_id: str
+    profile_id: str
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
-# --- Combined Response ---
+# --- Identity Document Schemas ---
+class IdentityDocumentBase(BaseModel):
+    document_type: str | None = None
+    document_number: str | None = None
+    issued_date: datetime | None = None
+    expiry_date: datetime | None = None
+    metadata_id: str | None = None
 
 
-class TenantProfileResponse(BaseModel):
-    user: UserResponse
-    profile: ProfileResponse | None = None
+class IdentityDocumentCreate(IdentityDocumentBase):
+    pass
+
+
+class IdentityDocumentResponse(IdentityDocumentBase):
+    identity_id: str
+    profile_id: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- User Interest Schemas ---
+class UserInterestBase(BaseModel):
+    interest_text: str | None = None
+    normalized_text: str | None = None
+    metadata_id: str | None = None
+
+
+class UserInterestCreate(UserInterestBase):
+    pass
+
+
+class UserInterestResponse(UserInterestBase):
+    interest_id: str
+    profile_id: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- Profile Schemas ---
+class ProfileBase(BaseModel):
+    nickname: str | None = None
+    dob: date | None = None
+    gender: bool | None = None  # True: Male, False: Female
+    address: str | None = None
+    avatar_url: str | None = None
+    bio: str | None = None
+    metadata_id: str | None = None
+    valid_from: datetime | None = None
+    valid_to: datetime | None = None
+
+
+class ProfileCreate(ProfileBase):
+    pass
+
+
+class ProfileUpdate(BaseModel):
+    nickname: str | None = None
+    dob: date | None = None
+    gender: bool | None = None
+    address: str | None = None
+    avatar_url: str | None = None
+    bio: str | None = None
+    metadata_id: str | None = None
+    valid_from: datetime | None = None
+    valid_to: datetime | None = None
+
+
+class ProfileResponse(ProfileBase):
+    profile_id: str
+    created_at: datetime
+    updated_at: datetime
+
+    # Optional: Include related data
+    educations: list[EducationResponse] = []
+    identity_documents: list[IdentityDocumentResponse] = []
+    user_interests: list[UserInterestResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
