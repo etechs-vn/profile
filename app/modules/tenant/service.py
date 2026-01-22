@@ -24,6 +24,14 @@ class TenantService:
         if result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email đã tồn tại")
 
+        # Validate tenant_id nếu được cung cấp
+        if user_data.tenant_id:
+            tenant_result = await self.db.execute(
+                select(Tenant).where(Tenant.tenant_id == user_data.tenant_id)
+            )
+            if not tenant_result.scalar_one_or_none():
+                raise HTTPException(status_code=404, detail="Tenant không tồn tại")
+
         try:
             # Create
             new_user = User(
@@ -32,6 +40,7 @@ class TenantService:
                 full_name=user_data.full_name,
                 slug=user_data.slug,
                 avatar_url=user_data.avatar_url,
+                tenant_id=user_data.tenant_id,
             )
             self.db.add(new_user)
             # Use flush instead of commit to let dependency handle transaction

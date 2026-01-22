@@ -3,7 +3,12 @@ from typing import List
 from fastapi import APIRouter
 
 from app.api.deps import SharedDB
-from app.modules.auth.schemas import UserCreate, UserResponse, TenantCreate, TenantResponse
+from app.modules.auth.schemas import (
+    UserCreate,
+    UserResponse,
+    TenantCreate,
+    TenantResponse,
+)
 from app.modules.tenant.service import TenantService
 
 router = APIRouter()
