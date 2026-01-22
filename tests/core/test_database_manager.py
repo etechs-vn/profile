@@ -53,16 +53,14 @@ async def test_ensure_tenant_tables(db_manager: DatabaseManager, sample_tenant: 
 
     engine = await db_manager.get_tenant_engine(sample_tenant.tenant_id)
 
-    # Verify profiles table exists
+    # Verify profile table exists
     async with engine.connect() as conn:
         # Check SQLite system tables
         result = await conn.execute(
-            text(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='profiles'"
-            )
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='profile'")
         )
         table_name = result.scalar()
-        assert table_name == "profiles", "Table 'profiles' was not created"
+        assert table_name == "profile", "Table 'profile' was not created"
 
 
 @pytest.mark.asyncio
