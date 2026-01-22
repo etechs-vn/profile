@@ -10,7 +10,8 @@ from app.db.session import (
     get_tenant_db_from_query,
 )
 from app.modules.profile.service import ProfileService
-from app.modules.social.service import ConnectionService, SocialService
+from app.modules.social.service import SocialService
+from app.modules.wallet.service import WalletService
 
 # Shared DB Dependency
 SharedDB = Annotated[AsyncSession, Depends(get_shared_db)]
@@ -52,18 +53,6 @@ def get_profile_service_header(
 ProfileServiceHeaderDep = Annotated[ProfileService, Depends(get_profile_service_header)]
 
 
-# Connection Service
-def get_connection_service_path(
-    tenant_db: TenantDBPath,
-) -> ConnectionService:
-    return ConnectionService(tenant_db)
-
-
-ConnectionServicePathDep = Annotated[
-    ConnectionService, Depends(get_connection_service_path)
-]
-
-
 # Social Service
 def get_social_service_path(
     tenant_db: TenantDBPath,
@@ -72,3 +61,13 @@ def get_social_service_path(
 
 
 SocialServicePathDep = Annotated[SocialService, Depends(get_social_service_path)]
+
+
+# Wallet Service
+def get_wallet_service_path(
+    tenant_db: TenantDBPath,
+) -> WalletService:
+    return WalletService(tenant_db)
+
+
+WalletServicePathDep = Annotated[WalletService, Depends(get_wallet_service_path)]
