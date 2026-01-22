@@ -1,7 +1,6 @@
 import asyncio
 from sqlalchemy import text
 from app.db.database_manager import db_manager
-from app.models.shared import User, Tenant  # Ensure models are registered
 from app.db.base import SharedBase
 
 

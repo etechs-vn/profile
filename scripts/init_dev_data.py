@@ -6,7 +6,7 @@ import os
 sys.path.append(os.getcwd())
 
 from app.db.database_manager import db_manager
-from app.models.shared import Tenant
+from app.modules.auth.models import Tenant
 from app.core.config import settings
 from sqlalchemy import select
 
