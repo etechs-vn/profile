@@ -1,11 +1,15 @@
 import pytest
-from sqlalchemy import select
 from fastapi import HTTPException
 
 from app.modules.profile.models import Profile
-from app.modules.social.models import Connection
-from app.modules.social.schemas import SocialPostCreate, CommentCreate
+from app.modules.social.schemas import (
+    PostCreate,
+    CommentCreate,
+    MessageCreate,
+    GroupCreate,
+)
 from app.modules.social.service import SocialService
+
 
 # --- Fixtures ---
 
@@ -26,7 +30,7 @@ async def tenant_db(db_manager, sample_tenant):
 async def sample_profile(tenant_db):
     """Create a sample profile directly in tenant DB."""
     profile = Profile(
-        user_id=1, full_name="Test User", slug="test-user", bio="Hello world"
+        profile_id="test-profile-1", user_id=1, nickname="Test User", bio="Hello world"
     )
     tenant_db.add(profile)
     await tenant_db.commit()
@@ -37,7 +41,7 @@ async def sample_profile(tenant_db):
 @pytest.fixture
 async def friend_profile(tenant_db):
     """Create a friend profile directly in tenant DB."""
-    profile = Profile(user_id=2, full_name="Friend User", slug="friend-user")
+    profile = Profile(profile_id="friend-profile-1", user_id=2, nickname="Friend User")
     tenant_db.add(profile)
     await tenant_db.commit()
     await tenant_db.refresh(profile)
@@ -50,14 +54,12 @@ async def friend_profile(tenant_db):
 @pytest.mark.asyncio
 async def test_create_post(tenant_db, sample_profile):
     service = SocialService(tenant_db)
-    data = SocialPostCreate(content="Hello world", privacy="public")
+    data = PostCreate(content="Hello world")
 
     post = await service.create_post(sample_profile.user_id, data)
 
-    assert post.id is not None
-    assert post.profile_id == sample_profile.id
+    assert post.post_id is not None
     assert post.content == "Hello world"
-    assert post.privacy == "public"
 
 
 @pytest.mark.asyncio
@@ -71,7 +73,7 @@ async def test_get_feed_empty(tenant_db, sample_profile):
 async def test_get_feed_own_posts(tenant_db, sample_profile):
     service = SocialService(tenant_db)
     # Create a post
-    data = SocialPostCreate(content="My Post", privacy="public")
+    data = PostCreate(content="My Post")
     await service.create_post(sample_profile.user_id, data)
 
     posts = await service.get_feed(sample_profile.user_id)
@@ -80,51 +82,23 @@ async def test_get_feed_own_posts(tenant_db, sample_profile):
 
 
 @pytest.mark.asyncio
-async def test_get_feed_with_friend(tenant_db, sample_profile, friend_profile):
-    service = SocialService(tenant_db)
-
-    # 1. Create connection
-    conn = Connection(
-        requester_id=sample_profile.id, receiver_id=friend_profile.id, status="accepted"
-    )
-    tenant_db.add(conn)
-    await tenant_db.commit()
-
-    # 2. Friend creates a post
-    friend_post = SocialPostCreate(content="Friend Post", privacy="friends")
-    await service.create_post(friend_profile.user_id, friend_post)
-
-    # 3. Friend creates a private post (should not see)
-    private_post = SocialPostCreate(content="Secret Post", privacy="private")
-    await service.create_post(friend_profile.user_id, private_post)
-
-    # 4. Get Feed
-    posts = await service.get_feed(sample_profile.user_id)
-
-    # Expect only the "Friend Post"
-    assert len(posts) == 1
-    assert posts[0].content == "Friend Post"
-    assert posts[0].profile_id == friend_profile.id
-
-
-@pytest.mark.asyncio
-async def test_like_post(tenant_db, sample_profile):
+async def test_interact_post(tenant_db, sample_profile):
     service = SocialService(tenant_db)
 
     # Create post
-    data = SocialPostCreate(content="Post to like")
+    data = PostCreate(content="Post to like")
     post = await service.create_post(sample_profile.user_id, data)
 
     # Like
-    liked = await service.like_post(sample_profile.user_id, post.id)
-    assert liked is True
+    interaction = await service.interact_post(
+        sample_profile.user_id, post.post_id, "like"
+    )
+    assert interaction.interaction_id is not None
 
-    # Check state
-    # Reload post to check likes count/relationship if modeled, but here we check return value first
-    # Or check DB directly
-    # Re-like (Unlike)
-    liked = await service.like_post(sample_profile.user_id, post.id)
-    assert liked is False
+    # Check duplicate
+    with pytest.raises(HTTPException) as exc:
+        await service.interact_post(sample_profile.user_id, post.post_id, "like")
+    assert exc.value.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -132,41 +106,82 @@ async def test_comment_post(tenant_db, sample_profile):
     service = SocialService(tenant_db)
 
     # Create post
-    data = SocialPostCreate(content="Post to comment")
+    data = PostCreate(content="Post to comment")
     post = await service.create_post(sample_profile.user_id, data)
 
     # Comment
     comment_data = CommentCreate(content="Nice post!")
-    comment = await service.comment_post(sample_profile.user_id, post.id, comment_data)
+    comment = await service.comment_post(
+        sample_profile.user_id, post.post_id, comment_data
+    )
 
-    assert comment.id is not None
+    assert comment.comment_id is not None
     assert comment.content == "Nice post!"
-    assert comment.post_id == post.id
-    assert comment.author_id == sample_profile.id
+
+
+@pytest.mark.asyncio
+async def test_get_comments(tenant_db, sample_profile):
+    service = SocialService(tenant_db)
+
+    # Create post
+    data = PostCreate(content="Post")
+    post = await service.create_post(sample_profile.user_id, data)
+
+    # Add comments
+    comment_data1 = CommentCreate(content="First comment")
+    await service.comment_post(sample_profile.user_id, post.post_id, comment_data1)
+
+    comment_data2 = CommentCreate(content="Second comment")
+    await service.comment_post(sample_profile.user_id, post.post_id, comment_data2)
+
+    # Get comments
+    comments = await service.get_comments(post.post_id)
+    assert len(comments) == 2
 
 
 @pytest.mark.asyncio
 async def test_delete_post(tenant_db, sample_profile):
     service = SocialService(tenant_db)
-    data = SocialPostCreate(content="To delete")
+    data = PostCreate(content="To delete")
     post = await service.create_post(sample_profile.user_id, data)
 
-    await service.delete_post(sample_profile.user_id, post.id)
+    await service.delete_post(sample_profile.user_id, post.post_id)
 
     # Verify deleted
     with pytest.raises(HTTPException) as exc:
-        await service.get_post(post.id)
+        await service.get_post(post.post_id)
     assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_delete_post_unauthorized(tenant_db, sample_profile, friend_profile):
     service = SocialService(tenant_db)
-    data = SocialPostCreate(content="Friend's post")
+    data = PostCreate(content="Friend's post")
     # Friend creates post
     post = await service.create_post(friend_profile.user_id, data)
 
     # User tries to delete
     with pytest.raises(HTTPException) as exc:
-        await service.delete_post(sample_profile.user_id, post.id)
+        await service.delete_post(sample_profile.user_id, post.post_id)
     assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_create_group(tenant_db, sample_profile):
+    service = SocialService(tenant_db)
+
+    group = await service.create_group(sample_profile.user_id, GroupCreate())
+
+    assert group.group_id is not None
+    assert group.profile_id == sample_profile.profile_id
+
+
+@pytest.mark.asyncio
+async def test_send_message(tenant_db, sample_profile):
+    service = SocialService(tenant_db)
+
+    msg_data = MessageCreate(content="Hello", receiver_id="some-receiver")
+    msg = await service.send_message(sample_profile.user_id, msg_data)
+
+    assert msg.message_id is not None
+    assert msg.content == "Hello"

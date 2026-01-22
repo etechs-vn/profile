@@ -1,86 +1,248 @@
-from sqlalchemy import ForeignKey, JSON, String, Text, UniqueConstraint
+from datetime import datetime
+from typing import Optional, TYPE_CHECKING
+
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    SmallInteger,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import TenantBase
 
+if TYPE_CHECKING:
+    from app.modules.profile.models import Profile
 
-class Connection(TenantBase):
+
+class Post(TenantBase):
     """
-    Model quản lý mối quan hệ giữa các Profile (Bạn bè, Follow).
+    Bảng bài đăng (posts).
+    Lưu ý: Theo đặc tả, bảng này KHÔNG có foreign key liên kết trực tiếp với profile.
+    Quan hệ nằm ở bảng trung gian comment_post hoặc post_interactions (cho like/share).
     """
 
-    __tablename__ = "connections"
+    __tablename__ = "posts"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    requester_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
-    receiver_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
+    post_id: Mapped[str] = mapped_column(String, primary_key=True)
+    content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    file_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # Status: "pending", "accepted", "blocked"
-    status: Mapped[str] = mapped_column(String, default="pending")
-
-    # Đảm bảo mỗi cặp chỉ có 1 connection duy nhất
-    __table_args__ = (
-        UniqueConstraint("requester_id", "receiver_id", name="uq_connection_req_rec"),
+    # Relationships
+    comments_association: Mapped[list["CommentPost"]] = relationship(
+        back_populates="post"
     )
-
-
-class SocialPost(TenantBase):
-    """
-    Model cho trang mạng xã hội cá nhân (Quy trình 3.3.2)
-    """
-
-    __tablename__ = "social_posts"
-
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
-
-    # Hỗ trợ chia sẻ bài viết (Share)
-    original_post_id: Mapped[int | None] = mapped_column(
-        ForeignKey("social_posts.id"), nullable=True
-    )
-
-    content: Mapped[str] = mapped_column(Text)
-    media_urls: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
-
-    # Cấu hình quyền riêng tư cho từng bài viết: "public", "friends", "private"
-    privacy: Mapped[str] = mapped_column(default="public")
-
-    # Relationships (Optional but helpful for query)
-    comments = relationship(
-        "Comment", back_populates="post", cascade="all, delete-orphan"
-    )
-    likes = relationship("Like", back_populates="post", cascade="all, delete-orphan")
+    interactions: Mapped[list["PostInteraction"]] = relationship(back_populates="post")
 
 
 class Comment(TenantBase):
     """
-    Model cho bình luận bài viết.
+    Bảng bình luận (comments).
+    Lưu ý: Theo đặc tả, bảng này KHÔNG có foreign key liên kết trực tiếp với post hay profile.
+    Quan hệ nằm ở bảng trung gian comment_post.
     """
 
     __tablename__ = "comments"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    post_id: Mapped[int] = mapped_column(ForeignKey("social_posts.id"), index=True)
-    author_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
+    comment_id: Mapped[str] = mapped_column(String, primary_key=True)
+    content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    file_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    content: Mapped[str] = mapped_column(Text)
-
-    post = relationship("SocialPost", back_populates="comments")
-
-
-class Like(TenantBase):
-    """
-    Model cho lượt thích bài viết.
-    """
-
-    __tablename__ = "likes"
-
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    post_id: Mapped[int] = mapped_column(ForeignKey("social_posts.id"), index=True)
-    author_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
-
-    __table_args__ = (
-        UniqueConstraint("post_id", "author_id", name="uq_like_post_author"),
+    # Relationships
+    post_association: Mapped[list["CommentPost"]] = relationship(
+        back_populates="comment"
+    )
+    interactions: Mapped[list["CommentInteraction"]] = relationship(
+        back_populates="comment"
     )
 
-    post = relationship("SocialPost", back_populates="likes")
+
+class CommentPost(TenantBase):
+    """
+    Bảng liên kết bình luận và bài viết (comment_post).
+    Đây là nơi liên kết Post - Comment - Profile.
+    """
+
+    __tablename__ = "comment_post"
+
+    comment_post_id: Mapped[str] = mapped_column(String, primary_key=True)
+    post_id: Mapped[str] = mapped_column(ForeignKey("posts.post_id"))
+    comment_id: Mapped[str] = mapped_column(ForeignKey("comments.comment_id"))
+    profile_id: Mapped[str] = mapped_column(ForeignKey("profile.profile_id"))
+
+    post: Mapped["Post"] = relationship(back_populates="comments_association")
+    comment: Mapped["Comment"] = relationship(back_populates="post_association")
+    profile: Mapped["Profile"] = relationship()
+
+
+class PostInteraction(TenantBase):
+    """
+    Bảng tương tác bài viết (post_interactions).
+    """
+
+    __tablename__ = "post_interactions"
+
+    interaction_id: Mapped[str] = mapped_column(String, primary_key=True)
+    post_id: Mapped[str] = mapped_column(ForeignKey("posts.post_id"))
+    profile_id: Mapped[str] = mapped_column(ForeignKey("profile.profile_id"))
+    action: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    post: Mapped["Post"] = relationship(back_populates="interactions")
+    profile: Mapped["Profile"] = relationship()
+
+
+class CommentInteraction(TenantBase):
+    """
+    Bảng tương tác bình luận (comment_interactions).
+    """
+
+    __tablename__ = "comment_interactions"
+
+    interaction_id: Mapped[str] = mapped_column(String, primary_key=True)
+    comment_id: Mapped[str] = mapped_column(ForeignKey("comments.comment_id"))
+    profile_id: Mapped[str] = mapped_column(ForeignKey("profile.profile_id"))
+    action: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    comment: Mapped["Comment"] = relationship(back_populates="interactions")
+    profile: Mapped["Profile"] = relationship()
+
+
+class Group(TenantBase):
+    """
+    Bảng nhóm (groups).
+    """
+
+    __tablename__ = "groups"
+
+    group_id: Mapped[str] = mapped_column(String, primary_key=True)
+    profile_id: Mapped[str] = mapped_column(ForeignKey("profile.profile_id"))
+    role: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    joined_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    profile: Mapped["Profile"] = relationship(back_populates="groups")
+    polls: Mapped[list["Poll"]] = relationship(back_populates="group")
+    appointments: Mapped[list["Appointment"]] = relationship(back_populates="group")
+
+
+class Message(TenantBase):
+    """
+    Bảng tin nhắn (messages).
+    """
+
+    __tablename__ = "messages"
+
+    message_id: Mapped[str] = mapped_column(String, primary_key=True)
+    msg_scope: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    group_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("groups.group_id"), nullable=True
+    )
+    receiver_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("profile.profile_id"), nullable=True
+    )
+    content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    file_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    group: Mapped[Optional["Group"]] = relationship()
+    receiver: Mapped[Optional["Profile"]] = relationship()
+
+    __table_args__ = (CheckConstraint("msg_scope IN (0, 1)", name="check_msg_scope"),)
+
+
+class UserAction(TenantBase):
+    """
+    Bảng hành động người dùng (user_actions).
+    """
+
+    __tablename__ = "user_actions"
+
+    action_id: Mapped[str] = mapped_column(String, primary_key=True)
+    profile_id: Mapped[str] = mapped_column(ForeignKey("profile.profile_id"))
+    action_type: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    object_type: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    object_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    group_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    msg_scope: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    profile: Mapped["Profile"] = relationship(back_populates="user_actions")
+
+    __table_args__ = (
+        CheckConstraint("msg_scope IN (0, 1)", name="check_action_msg_scope"),
+    )
+
+
+class Poll(TenantBase):
+    """
+    Bảng bình chọn (polls).
+    """
+
+    __tablename__ = "polls"
+
+    poll_id: Mapped[str] = mapped_column(String, primary_key=True)
+    group_id: Mapped[str] = mapped_column(ForeignKey("groups.group_id"))
+    profile_id: Mapped[str] = mapped_column(ForeignKey("profile.profile_id"))
+    title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_closed: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    group: Mapped["Group"] = relationship(back_populates="polls")
+    profile: Mapped["Profile"] = relationship()
+    options: Mapped[list["PollOption"]] = relationship(back_populates="poll")
+
+
+class PollOption(TenantBase):
+    """
+    Bảng tùy chọn bình chọn (poll_options).
+    """
+
+    __tablename__ = "poll_options"
+
+    option_id: Mapped[str] = mapped_column(String, primary_key=True)
+    poll_id: Mapped[str] = mapped_column(ForeignKey("polls.poll_id"))
+    option_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    poll: Mapped["Poll"] = relationship(back_populates="options")
+    votes: Mapped[list["PollVote"]] = relationship(back_populates="option")
+
+
+class PollVote(TenantBase):
+    """
+    Bảng phiếu bầu bình chọn (poll_votes).
+    """
+
+    __tablename__ = "poll_votes"
+
+    poll_vote_id: Mapped[str] = mapped_column(String, primary_key=True)
+    option_id: Mapped[str] = mapped_column(ForeignKey("poll_options.option_id"))
+
+    option: Mapped["PollOption"] = relationship(back_populates="votes")
+
+
+class Appointment(TenantBase):
+    """
+    Bảng cuộc hẹn/nhắc hẹn (appointments).
+    """
+
+    __tablename__ = "appointments"
+
+    appointment_id: Mapped[str] = mapped_column(String, primary_key=True)
+    group_id: Mapped[str] = mapped_column(ForeignKey("groups.group_id"))
+    title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    start_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    remind_enabled: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    remind_before_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    group: Mapped["Group"] = relationship(back_populates="appointments")
