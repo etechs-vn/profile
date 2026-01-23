@@ -8,6 +8,10 @@ from app.modules.profile.models import (
     Education,
     IdentityDocument,
     UserInterest,
+    Wallet,
+    StudentInfo,
+    TeacherInfo,
+    ProfilePrivacySettings,
 )
 from app.modules.profile.schemas import (
     ProfileCreate,
@@ -15,6 +19,11 @@ from app.modules.profile.schemas import (
     EducationCreate,
     IdentityDocumentCreate,
     UserInterestCreate,
+    ProfileProvision,
+    StudentInfoCreate,
+    TeacherInfoCreate,
+    PrivacySettingsUpdate,
+    VerificationRequest,
 )
 
 
@@ -130,3 +139,196 @@ class ProfileService:
         await self.tenant_db.commit()
         await self.tenant_db.refresh(new_interest)
         return new_interest
+
+    # --- Profile Provisioning (Internal API) ---
+
+    async def provision_profile(
+        self, data: ProfileProvision
+    ) -> tuple[Profile, Wallet, ProfilePrivacySettings]:
+        """
+        Tự động tạo Profile + Wallet + PrivacySettings cho user mới.
+        Được gọi bởi Auth Service sau khi user đăng ký.
+        """
+        # Check if profile already exists for this user
+        existing = await self.tenant_db.execute(
+            select(Profile).where(Profile.user_id == data.user_id)
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Profile đã tồn tại cho user này")
+
+        # 1. Create Profile
+        profile_id = str(uuid.uuid4())
+        new_profile = Profile(
+            profile_id=profile_id,
+            user_id=data.user_id,
+            nickname=data.nickname,
+            avatar_url=data.avatar_url,
+            verification_status="unverified",
+        )
+        self.tenant_db.add(new_profile)
+
+        # 2. Create Wallet
+        wallet_id = str(uuid.uuid4())
+        new_wallet = Wallet(
+            wallet_id=wallet_id,
+            profile_id=profile_id,
+            ets=0,
+        )
+        self.tenant_db.add(new_wallet)
+
+        # 3. Create default Privacy Settings
+        privacy_id = str(uuid.uuid4())
+        new_privacy = ProfilePrivacySettings(
+            id=privacy_id,
+            profile_id=profile_id,
+        )
+        self.tenant_db.add(new_privacy)
+
+        await self.tenant_db.commit()
+        await self.tenant_db.refresh(new_profile)
+        await self.tenant_db.refresh(new_wallet)
+        await self.tenant_db.refresh(new_privacy)
+
+        return new_profile, new_wallet, new_privacy
+
+    # --- Student/Teacher Info ---
+
+    async def add_student_info(
+        self, profile_id: str, data: StudentInfoCreate
+    ) -> StudentInfo:
+        """Thêm thông tin học sinh vào profile."""
+        profile = await self.get_profile_by_id(profile_id)
+
+        # Check if already has student info
+        existing = await self.tenant_db.execute(
+            select(StudentInfo).where(StudentInfo.profile_id == profile_id)
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Thông tin học sinh đã tồn tại")
+
+        student_id = str(uuid.uuid4())
+        new_student = StudentInfo(
+            id=student_id,
+            profile_id=profile_id,
+            **data.model_dump(),
+        )
+        self.tenant_db.add(new_student)
+
+        # Update profile role if not set
+        if not profile.role:
+            profile.role = "student"
+
+        await self.tenant_db.commit()
+        await self.tenant_db.refresh(new_student)
+        return new_student
+
+    async def add_teacher_info(
+        self, profile_id: str, data: TeacherInfoCreate
+    ) -> TeacherInfo:
+        """Thêm thông tin giáo viên vào profile."""
+        profile = await self.get_profile_by_id(profile_id)
+
+        # Check if already has teacher info
+        existing = await self.tenant_db.execute(
+            select(TeacherInfo).where(TeacherInfo.profile_id == profile_id)
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Thông tin giáo viên đã tồn tại")
+
+        teacher_id = str(uuid.uuid4())
+        new_teacher = TeacherInfo(
+            id=teacher_id,
+            profile_id=profile_id,
+            **data.model_dump(),
+        )
+        self.tenant_db.add(new_teacher)
+
+        # Update profile role if not set
+        if not profile.role:
+            profile.role = "teacher"
+
+        await self.tenant_db.commit()
+        await self.tenant_db.refresh(new_teacher)
+        return new_teacher
+
+    # --- Verification ---
+
+    async def request_verification(
+        self, profile_id: str, data: VerificationRequest
+    ) -> Profile:
+        """Yêu cầu xác minh vai trò."""
+        profile = await self.get_profile_by_id(profile_id)
+
+        # Check if already verified
+        if profile.verification_status in ("verified", "certified"):
+            raise HTTPException(
+                status_code=400, detail="Profile đã được xác minh"
+            )
+
+        # Check if has required info based on role
+        if data.role == "student":
+            existing = await self.tenant_db.execute(
+                select(StudentInfo).where(StudentInfo.profile_id == profile_id)
+            )
+            if not existing.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=400,
+                    detail="Vui lòng thêm thông tin học sinh trước khi yêu cầu xác minh",
+                )
+        elif data.role == "teacher":
+            existing = await self.tenant_db.execute(
+                select(TeacherInfo).where(TeacherInfo.profile_id == profile_id)
+            )
+            if not existing.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=400,
+                    detail="Vui lòng thêm thông tin giáo viên trước khi yêu cầu xác minh",
+                )
+
+        # Update status to pending
+        profile.verification_status = "pending"
+        profile.role = data.role
+
+        await self.tenant_db.commit()
+        await self.tenant_db.refresh(profile)
+        return profile
+
+    # --- Privacy Settings ---
+
+    async def get_privacy_settings(self, profile_id: str) -> ProfilePrivacySettings:
+        """Lấy cài đặt quyền riêng tư của profile."""
+        await self.get_profile_by_id(profile_id)
+
+        result = await self.tenant_db.execute(
+            select(ProfilePrivacySettings).where(
+                ProfilePrivacySettings.profile_id == profile_id
+            )
+        )
+        settings = result.scalar_one_or_none()
+        if not settings:
+            # Auto create if not exists
+            privacy_id = str(uuid.uuid4())
+            settings = ProfilePrivacySettings(
+                id=privacy_id,
+                profile_id=profile_id,
+            )
+            self.tenant_db.add(settings)
+            await self.tenant_db.commit()
+            await self.tenant_db.refresh(settings)
+
+        return settings
+
+    async def update_privacy_settings(
+        self, profile_id: str, data: PrivacySettingsUpdate
+    ) -> ProfilePrivacySettings:
+        """Cập nhật cài đặt quyền riêng tư."""
+        settings = await self.get_privacy_settings(profile_id)
+
+        obj_data = data.model_dump(exclude_unset=True)
+        for key, value in obj_data.items():
+            setattr(settings, key, value)
+
+        await self.tenant_db.commit()
+        await self.tenant_db.refresh(settings)
+        return settings
+

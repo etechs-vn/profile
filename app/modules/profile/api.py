@@ -13,6 +13,14 @@ from app.modules.profile.schemas import (
     IdentityDocumentResponse,
     UserInterestCreate,
     UserInterestResponse,
+    StudentInfoCreate,
+    StudentInfoResponse,
+    TeacherInfoCreate,
+    TeacherInfoResponse,
+    VerificationRequest,
+    VerificationResponse,
+    PrivacySettingsUpdate,
+    PrivacySettingsResponse,
 )
 
 router = APIRouter()
@@ -114,3 +122,80 @@ async def add_interest(
     profile_id: str = Path(...),
 ):
     return await service.add_interest(profile_id, interest_data)
+
+
+# --- Verification Workflow ---
+
+
+@router.post(
+    "/{tenant_id}/profiles/{profile_id}/student-info",
+    response_model=StudentInfoResponse,
+)
+async def add_student_info(
+    data: StudentInfoCreate,
+    service: ProfileServicePathDep,
+    profile_id: str = Path(...),
+):
+    """Thêm thông tin học sinh vào profile."""
+    return await service.add_student_info(profile_id, data)
+
+
+@router.post(
+    "/{tenant_id}/profiles/{profile_id}/teacher-info",
+    response_model=TeacherInfoResponse,
+)
+async def add_teacher_info(
+    data: TeacherInfoCreate,
+    service: ProfileServicePathDep,
+    profile_id: str = Path(...),
+):
+    """Thêm thông tin giáo viên vào profile."""
+    return await service.add_teacher_info(profile_id, data)
+
+
+@router.post(
+    "/{tenant_id}/profiles/{profile_id}/request-verification",
+    response_model=VerificationResponse,
+)
+async def request_verification(
+    data: VerificationRequest,
+    service: ProfileServicePathDep,
+    profile_id: str = Path(...),
+):
+    """Yêu cầu xác minh vai trò (học sinh hoặc giáo viên)."""
+    profile = await service.request_verification(profile_id, data)
+    return VerificationResponse(
+        profile_id=profile.profile_id,
+        verification_status=profile.verification_status,
+        role=profile.role,
+        message=f"Yêu cầu xác minh vai trò {data.role} đã được gửi. Trạng thái: {profile.verification_status}",
+    )
+
+
+# --- Privacy Settings ---
+
+
+@router.get(
+    "/{tenant_id}/profiles/{profile_id}/privacy",
+    response_model=PrivacySettingsResponse,
+)
+async def get_privacy_settings(
+    service: ProfileServicePathDep,
+    profile_id: str = Path(...),
+):
+    """Lấy cài đặt quyền riêng tư của profile."""
+    return await service.get_privacy_settings(profile_id)
+
+
+@router.put(
+    "/{tenant_id}/profiles/{profile_id}/privacy",
+    response_model=PrivacySettingsResponse,
+)
+async def update_privacy_settings(
+    data: PrivacySettingsUpdate,
+    service: ProfileServicePathDep,
+    profile_id: str = Path(...),
+):
+    """Cập nhật cài đặt quyền riêng tư."""
+    return await service.update_privacy_settings(profile_id, data)
+

@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.modules.document import api as documents_api
 from app.modules.profile import api as profiles_api
+from app.modules.profile import internal_api as profiles_internal_api
 from app.modules.social import api as social_api
 from app.modules.system import api as system_api
 from app.modules.tenant import api as tenant_api
@@ -14,6 +15,9 @@ api_router.include_router(system_api.router, prefix="/health", tags=["Health Che
 
 # Shared Database Routes
 api_router.include_router(tenant_api.router, prefix="/shared", tags=["Shared Database"])
+
+# Internal API Routes (for other services)
+api_router.include_router(profiles_internal_api.router, tags=["Internal API"])
 
 # Tenant Database Routes
 api_router.include_router(

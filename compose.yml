@@ -44,5 +44,17 @@ services:
     volumes:
       - neo4j_data:/data
 
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=shared_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
 volumes:
   neo4j_data:
+  postgres_data:

@@ -44,6 +44,14 @@ class Profile(TenantBase):
     bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Verification & Role fields
+    verification_status: Mapped[str] = mapped_column(
+        String(20), default="unverified"
+    )  # unverified | pending | verified | certified
+    role: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True
+    )  # student | teacher
+
     # Relationships (Reverse)
     educations: Mapped[list["Education"]] = relationship(back_populates="profile")
     identity_documents: Mapped[list["IdentityDocument"]] = relationship(
@@ -52,6 +60,17 @@ class Profile(TenantBase):
     wallets: Mapped[list["Wallet"]] = relationship(back_populates="profile")
     user_interests: Mapped[list["UserInterest"]] = relationship(
         back_populates="profile"
+    )
+
+    # Verification & Privacy relationships
+    student_info: Mapped[Optional["StudentInfo"]] = relationship(
+        back_populates="profile", uselist=False
+    )
+    teacher_info: Mapped[Optional["TeacherInfo"]] = relationship(
+        back_populates="profile", uselist=False
+    )
+    privacy_settings: Mapped[Optional["ProfilePrivacySettings"]] = relationship(
+        back_populates="profile", uselist=False
     )
 
     # Relationships for Social module
@@ -246,3 +265,70 @@ class InterestMapping(TenantBase):
 
     user_interest: Mapped["UserInterest"] = relationship(back_populates="mappings")
     canonical: Mapped["InterestCanonical"] = relationship(back_populates="mappings")
+
+
+class StudentInfo(TenantBase):
+    """
+    Thông tin học sinh - dùng khi xác minh vai trò student.
+    """
+
+    __tablename__ = "student_info"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    profile_id: Mapped[str] = mapped_column(
+        ForeignKey("profile.profile_id"), unique=True
+    )
+
+    school_name: Mapped[str] = mapped_column(Text)
+    grade: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    school_year: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    major: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    profile: Mapped["Profile"] = relationship(back_populates="student_info")
+
+
+class TeacherInfo(TenantBase):
+    """
+    Thông tin giáo viên - dùng khi xác minh vai trò teacher.
+    """
+
+    __tablename__ = "teacher_info"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    profile_id: Mapped[str] = mapped_column(
+        ForeignKey("profile.profile_id"), unique=True
+    )
+
+    institution_name: Mapped[str] = mapped_column(Text)
+    subject: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    title: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    metadata_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    profile: Mapped["Profile"] = relationship(back_populates="teacher_info")
+
+
+class ProfilePrivacySettings(TenantBase):
+    """
+    Cấu hình quyền riêng tư cho profile.
+    """
+
+    __tablename__ = "profile_privacy_settings"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    profile_id: Mapped[str] = mapped_column(
+        ForeignKey("profile.profile_id"), unique=True
+    )
+
+    # Visibility levels: public | friends | private
+    profile_visibility: Mapped[str] = mapped_column(String(20), default="public")
+    posts_visibility: Mapped[str] = mapped_column(String(20), default="public")
+    education_visibility: Mapped[str] = mapped_column(String(20), default="friends")
+    contact_visibility: Mapped[str] = mapped_column(String(20), default="private")
+
+    # Permissions
+    allow_messages_from: Mapped[str] = mapped_column(String(20), default="friends")
+    allow_friend_requests: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    profile: Mapped["Profile"] = relationship(back_populates="privacy_settings")
+
